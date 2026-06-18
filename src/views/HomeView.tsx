@@ -350,7 +350,7 @@ export default function HomeView() {
             Không tìm thấy sự kiện phù hợp
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {filtered.map((event) => (
               <EventCard
                 key={event.id}
