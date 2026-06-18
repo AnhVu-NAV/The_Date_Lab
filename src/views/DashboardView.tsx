@@ -772,9 +772,9 @@ function UserTickets({ token }: { token: string }) {
           {filteredTickets.map(tk => {
         const isPaid = tk.paymentStatus === 'paid';
         return (
-          <div key={tk.id} className="group relative w-full max-w-4xl mx-auto">
+          <div key={tk.id} className="group relative w-full max-w-4xl mx-auto h-full">
             {/* The Ticket Container to be downloaded */}
-            <div id={`ticket-${tk.id}`} className={`bg-white rounded-[2rem] overflow-hidden shadow-[0_10px_40px_rgba(36,61,145,0.05)] border border-[#f0ede6] flex flex-col ${!isVertical ? 'md:flex-row' : ''}`}>
+            <div id={`ticket-${tk.id}`} className={`bg-white rounded-[2rem] overflow-hidden shadow-[0_10px_40px_rgba(36,61,145,0.05)] border border-[#f0ede6] flex flex-col h-full ${!isVertical ? 'md:flex-row' : ''}`}>
               
               {/* LEFT SIDE: Image + Details */}
               <div className={`flex-1 relative flex flex-col ${!isVertical ? 'md:flex-row' : ''}`}>
@@ -853,12 +853,13 @@ function UserTickets({ token }: { token: string }) {
             </div>
 
             {/* Floating Download Button */}
-            <div className={`mt-4 flex justify-end group-hover:opacity-100 transition-opacity ${!isVertical ? 'md:absolute md:top-4 md:-right-16 md:mt-0 md:opacity-0' : ''}`}>
+            <div className="absolute top-4 right-4 z-20 transition-opacity opacity-100 md:opacity-0 group-hover:opacity-100">
               <button 
                 onClick={() => handleDownload(tk.id)}
-                className={`flex items-center gap-2 bg-white rounded-full shadow-lg border border-[#f0ede6] text-[#243d91] font-bold text-sm hover:text-[#e8539e] hover:bg-[#faf9f7] hover:scale-105 transition-all ${!isVertical ? 'px-4 py-2.5 md:p-3' : 'px-4 py-2.5'}`}
+                className="flex items-center gap-2 bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-[#f0ede6] text-[#243d91] font-bold text-sm hover:text-[#e8539e] hover:bg-white hover:scale-105 transition-all p-2.5 md:p-3"
+                title={lng === 'vi' ? 'Tải vé' : 'Download'}
               >
-                <Download size={20} /> <span className={!isVertical ? "md:hidden" : ""}>{lng === 'vi' ? 'Tải vé' : 'Download'}</span>
+                <Download size={20} /> <span className={!isVertical ? "md:hidden" : "hidden"}>{lng === 'vi' ? 'Tải vé' : 'Download'}</span>
               </button>
             </div>
           </div>
