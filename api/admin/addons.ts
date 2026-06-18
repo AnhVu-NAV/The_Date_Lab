@@ -20,11 +20,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const admin = await requireAdmin(req, res);
     if (!admin) return;
 
-    const { name, nameEn, description, descriptionEn, price, imageUrl, isActive } = req.body;
+    const { name, nameEn, price, imageUrl, isActive } = req.body;
     if (!name || price === undefined) return res.status(400).json({ error: 'Tên và giá là bắt buộc' });
 
     const [addon] = await db.insert(addons).values({
-      name, nameEn, description, descriptionEn, price: Number(price), imageUrl, isActive
+      name, nameEn, price: Number(price), imageUrl, isActive
     }).returning();
 
     return res.status(201).json(addon);

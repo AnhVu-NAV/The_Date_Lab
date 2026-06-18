@@ -17,10 +17,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // PUT — Admin: update addon
   if (req.method === 'PUT') {
-    const { name, nameEn, description, descriptionEn, price, imageUrl, isActive } = req.body;
+    const { name, nameEn, price, imageUrl, isActive } = req.body;
     
     const [updated] = await db.update(addons)
-      .set({ name, nameEn, description, descriptionEn, price: price !== undefined ? Number(price) : undefined, imageUrl, isActive })
+      .set({ name, nameEn, price: price !== undefined ? Number(price) : undefined, imageUrl, isActive })
       .where(eq(addons.id, id))
       .returning();
 
