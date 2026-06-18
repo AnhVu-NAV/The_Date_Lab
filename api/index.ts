@@ -1,45 +1,45 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // Admin
-import adminAddons from '../api_handlers/admin/addons.ts';
-import adminAddonsId from '../api_handlers/admin/addons/[id].ts';
-import adminBank from '../api_handlers/admin/bank.ts';
-import adminBankId from '../api_handlers/admin/bank/[id].ts';
-import adminBankIdActivate from '../api_handlers/admin/bank/[id]/activate.ts';
-import adminSettings from '../api_handlers/admin/settings.ts';
-import adminStats from '../api_handlers/admin/stats.ts';
-import adminUsers from '../api_handlers/admin/users.ts';
+import adminAddons from '../api_handlers/admin/addons.js';
+import adminAddonsId from '../api_handlers/admin/addons/[id].js';
+import adminBank from '../api_handlers/admin/bank.js';
+import adminBankId from '../api_handlers/admin/bank/[id].js';
+import adminBankIdActivate from '../api_handlers/admin/bank/[id]/activate.js';
+import adminSettings from '../api_handlers/admin/settings.js';
+import adminStats from '../api_handlers/admin/stats.js';
+import adminUsers from '../api_handlers/admin/users.js';
 
 // Auth
-import authLogin from '../api_handlers/auth/login.ts';
-import authMe from '../api_handlers/auth/me.ts';
-import authRegister from '../api_handlers/auth/register.ts';
+import authLogin from '../api_handlers/auth/login.js';
+import authMe from '../api_handlers/auth/me.js';
+import authRegister from '../api_handlers/auth/register.js';
 
 // Events
-import eventsIndex from '../api_handlers/events/index.ts';
-import eventsId from '../api_handlers/events/[id].ts';
+import eventsIndex from '../api_handlers/events/index.js';
+import eventsId from '../api_handlers/events/[id].js';
 
 // Gemini
-import geminiChatbot from '../api_handlers/gemini/chatbot.ts';
-import geminiQuiz from '../api_handlers/gemini/quiz.ts';
+import geminiChatbot from '../api_handlers/gemini/chatbot.js';
+import geminiQuiz from '../api_handlers/gemini/quiz.js';
 
 // Payment
-import paymentQr from '../api_handlers/payment/qr.ts';
+import paymentQr from '../api_handlers/payment/qr.js';
 
 // Settings
-import settingsIndex from '../api_handlers/settings/index.ts';
+import settingsIndex from '../api_handlers/settings/index.js';
 
 // Tarot
-import tarotIndex from '../api_handlers/tarot/index.ts';
-import tarotId from '../api_handlers/tarot/[id].ts';
+import tarotIndex from '../api_handlers/tarot/index.js';
+import tarotId from '../api_handlers/tarot/[id].js';
 
 // Tickets
-import ticketsIndex from '../api_handlers/tickets/index.ts';
-import ticketsId from '../api_handlers/tickets/[id].ts';
+import ticketsIndex from '../api_handlers/tickets/index.js';
+import ticketsId from '../api_handlers/tickets/[id].js';
 
 // Vault
-import vaultIndex from '../api_handlers/vault/index.ts';
-import vaultUpload from '../api_handlers/vault/upload.ts';
+import vaultIndex from '../api_handlers/vault/index.js';
+import vaultUpload from '../api_handlers/vault/upload.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
