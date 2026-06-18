@@ -22,9 +22,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // PUT — update profile
   if (req.method === 'PUT') {
-    const { name, phone, bio, dob, preferences, notifyEmail, notifySms, avatarUrl } = req.body;
+    const { name, phone, bio, dob, preferences, notifyEmail, notifySms, avatarUrl, gender, address } = req.body;
     const [updated] = await db.update(users)
-      .set({ name, phone, bio, dob, preferences, notifyEmail, notifySms, avatarUrl })
+      .set({ name, phone, bio, dob, preferences, notifyEmail, notifySms, avatarUrl, gender, address })
       .where(eq(users.id, auth.id))
       .returning();
     const { passwordHash: _, ...safeUser } = updated;

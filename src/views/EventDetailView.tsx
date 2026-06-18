@@ -219,8 +219,9 @@ export default function EventDetailView() {
                       className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl"
                     >
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-display font-bold text-[#243d91] text-lg">
-                          {lng === 'vi' ? '💳 Thanh toán' : '💳 Payment'}
+                        <h3 className="font-display font-bold text-[#243d91] text-lg flex items-center gap-2">
+                          <CreditCard size={18} className="text-[#243d91]" />
+                          {lng === 'vi' ? 'Thanh toán' : 'Payment'}
                         </h3>
                         <button onClick={() => setStep('done')} className="w-8 h-8 rounded-full bg-[#f0ede6] flex items-center justify-center text-[#243d91]/60 hover:text-red-500 transition-all">
                           <X size={14} />
@@ -254,9 +255,10 @@ export default function EventDetailView() {
 
                         <button
                           onClick={() => setStep('done')}
-                          className="w-full py-3 bg-[#e8539e] text-white font-bold rounded-xl hover:bg-[#e8539e]/90 transition-all"
+                          className="w-full py-3 bg-[#e8539e] text-white font-bold rounded-xl hover:bg-[#e8539e]/90 transition-all flex items-center justify-center gap-2"
                         >
-                          {lng === 'vi' ? '✅ Đã chuyển tiền' : '✅ I have transferred'}
+                          <CheckCircle2 size={18} />
+                          {lng === 'vi' ? 'Đã chuyển tiền' : 'I have transferred'}
                         </button>
                       </div>
                     </motion.div>

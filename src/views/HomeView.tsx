@@ -244,7 +244,7 @@ export default function HomeView() {
             </p>
             <div className="flex flex-col sm:flex-row gap-3 mb-8">
               <button
-                onClick={() => setShowQuiz(true)}
+                onClick={() => navigate('/quiz')}
                 className="flex items-center justify-center gap-2 px-6 py-3.5 bg-[#e8539e] text-white font-bold rounded-xl hover:bg-[#e8539e]/90 transition-all shadow-lg shadow-[#e8539e]/30 group"
               >
                 <Sparkles size={16} className="group-hover:rotate-12 transition-transform" /> 

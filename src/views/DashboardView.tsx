@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   User, Ticket, Camera, Shield, BarChart3, CalendarDays, Users,
   CreditCard, Layers, Plus, Pencil, Trash2, Check, X, ChevronDown,
-  Upload, Star, LogOut, Bell, TrendingUp, Clock, CircleCheck, AlertCircle, MapPin,
+  Upload, Star, LogOut, Bell, TrendingUp, Clock, CircleCheck, AlertCircle, MapPin, Download,
   LayoutDashboard, Landmark, ShoppingBag, Sparkles, Home, Lightbulb, CheckCircle2, Settings
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -701,73 +701,171 @@ function UserTickets({ token }: { token: string }) {
   const { lng } = useLanguage();
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'paid' | 'pending'>('all');
 
   useEffect(() => {
     api.getTickets(token).then(setTickets).finally(() => setLoading(false));
   }, [token]);
 
+  const handleDownload = async (ticketId: string) => {
+    const el = document.getElementById(`ticket-${ticketId}`);
+    if (!el) return;
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#faf9f7' });
+      const link = document.createElement('a');
+      link.download = `TDL-Ticket-${ticketId}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   if (loading) return <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-[#e8539e] border-t-transparent rounded-full animate-spin" /></div>;
   if (tickets.length === 0) return (
-    <div className="text-center py-16 bg-white rounded-3xl border border-[#f0ede6]">
+    <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-[#f0ede6] shadow-sm">
       <Ticket size={48} className="text-[#243d91]/20 mx-auto mb-4" />
       <p className="text-[#243d91]/50 font-bold">{lng === 'vi' ? 'Bạn chưa có vé nào' : 'No tickets yet'}</p>
-      <button className="mt-4 px-6 py-2 bg-[#243d91] text-white font-bold rounded-xl hover:bg-[#243d91]/90 transition-all">Khám phá sự kiện</button>
+      <button className="mt-4 px-6 py-2.5 bg-[#243d91] text-white font-bold rounded-xl hover:bg-[#243d91]/90 transition-all shadow-md">
+        {lng === 'vi' ? 'Khám phá sự kiện' : 'Explore Events'}
+      </button>
     </div>
   );
 
+  const filteredTickets = tickets.filter(tk => {
+    if (filter === 'paid') return tk.paymentStatus === 'paid';
+    if (filter === 'pending') return tk.paymentStatus !== 'paid';
+    return true;
+  });
+
+  const isVertical = filteredTickets.length >= 5;
+  const isCompact = filteredTickets.length >= 3 && filteredTickets.length <= 4;
+  let gridCls = "grid grid-cols-1 gap-8 pb-10";
+  if (isCompact) {
+    gridCls = "grid grid-cols-1 xl:grid-cols-2 gap-6 pb-10";
+  } else if (isVertical) {
+    gridCls = "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-10";
+  }
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {tickets.map(tk => {
+    <div className="flex flex-col">
+      <div className="flex items-center gap-2 mb-6">
+        <button onClick={() => setFilter('all')} className={`px-4 py-2 rounded-full text-sm font-bold transition-all ${filter === 'all' ? 'bg-[#243d91] text-white shadow-md' : 'bg-white border border-[#f0ede6] text-[#243d91]/60 hover:text-[#243d91] hover:border-[#243d91]/30'}`}>
+          {lng === 'vi' ? 'Tất cả' : 'All'}
+        </button>
+        <button onClick={() => setFilter('paid')} className={`px-4 py-2 rounded-full text-sm font-bold transition-all ${filter === 'paid' ? 'bg-emerald-500 text-white shadow-md' : 'bg-white border border-[#f0ede6] text-[#243d91]/60 hover:text-emerald-600 hover:border-emerald-200'}`}>
+          {lng === 'vi' ? 'Đã thanh toán' : 'Paid'}
+        </button>
+        <button onClick={() => setFilter('pending')} className={`px-4 py-2 rounded-full text-sm font-bold transition-all ${filter === 'pending' ? 'bg-amber-500 text-white shadow-md' : 'bg-white border border-[#f0ede6] text-[#243d91]/60 hover:text-amber-600 hover:border-amber-200'}`}>
+          {lng === 'vi' ? 'Chờ thanh toán' : 'Pending'}
+        </button>
+      </div>
+
+      {filteredTickets.length === 0 ? (
+        <div className="text-center py-20 bg-white/50 rounded-[2rem] border-2 border-dashed border-[#f0ede6] shadow-sm">
+          <Ticket size={48} className="text-[#243d91]/20 mx-auto mb-4" />
+          <p className="text-[#243d91]/50 font-bold">{lng === 'vi' ? 'Không có vé nào phù hợp' : 'No matching tickets'}</p>
+        </div>
+      ) : (
+        <div className={gridCls}>
+          {filteredTickets.map(tk => {
         const isPaid = tk.paymentStatus === 'paid';
         return (
-          <div key={tk.id} className="bg-white rounded-3xl border border-[#f0ede6] overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-all group">
-            <div className="h-32 bg-gray-100 relative">
-              {tk.eventImageUrl ? <img src={tk.eventImageUrl} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-[#243d91]/10" />}
-              <div className="absolute top-3 right-3">
-                <span className={`text-xs font-bold px-3 py-1.5 rounded-full shadow-sm backdrop-blur-md ${isPaid ? 'bg-emerald-500/90 text-white' : 'bg-amber-500/90 text-white'}`}>
-                  {isPaid ? <span className="flex items-center gap-1"><CheckCircle2 size={12}/> {lng === 'vi' ? 'Đã xác nhận' : 'Confirmed'}</span> : <span className="flex items-center gap-1"><Clock size={12}/> {lng === 'vi' ? 'Chờ xác nhận' : 'Pending'}</span>}
-                </span>
-              </div>
-            </div>
-            
-            <div className="p-5 flex-1 border-b border-dashed border-[#f0ede6] relative">
-              <div className="absolute -bottom-3 -left-3 w-6 h-6 rounded-full bg-[#faf9f7]" />
-              <div className="absolute -bottom-3 -right-3 w-6 h-6 rounded-full bg-[#faf9f7]" />
+          <div key={tk.id} className="group relative w-full max-w-4xl mx-auto">
+            {/* The Ticket Container to be downloaded */}
+            <div id={`ticket-${tk.id}`} className={`bg-white rounded-[2rem] overflow-hidden shadow-[0_10px_40px_rgba(36,61,145,0.05)] border border-[#f0ede6] flex flex-col ${!isVertical ? 'md:flex-row' : ''}`}>
               
-              <h4 className="font-display font-bold text-lg text-[#243d91] mb-1 group-hover:text-[#e8539e] transition-colors line-clamp-1">{tk.eventTitle}</h4>
-              <p className="text-sm text-[#243d91]/60 flex items-center gap-1.5"><CalendarDays size={14} /> {tk.eventDate}</p>
-              <p className="text-sm text-[#243d91]/60 flex items-center gap-1.5 mt-1"><MapPin size={14} /> {tk.eventLocation}</p>
-              
-              <div className="mt-4 pt-4 border-t border-[#f0ede6] flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold tracking-widest text-[#243d91]/40 uppercase">Số lượng</p>
-                  <p className="font-bold text-[#243d91]">{tk.quantity} vé</p>
+              {/* LEFT SIDE: Image + Details */}
+              <div className={`flex-1 relative flex flex-col ${!isVertical ? 'md:flex-row' : ''}`}>
+                <div className={`shrink-0 bg-gray-100 relative overflow-hidden w-full h-56 ${!isVertical ? (isCompact ? 'md:w-32 md:h-auto' : 'md:w-56 md:h-auto') : ''}`}>
+                  {tk.eventImageUrl ? (
+                    <img src={tk.eventImageUrl} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-[#243d91]/20 to-[#e8539e]/20" />
+                  )}
+                  {/* Subtle vignette */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                 </div>
-                <div className="text-right">
-                  <p className="text-xs font-bold tracking-widest text-[#243d91]/40 uppercase">Tổng tiền</p>
-                  <p className="font-display font-bold text-[#e8539e]">{(tk.totalPrice || 0).toLocaleString('vi-VN')}đ</p>
+                
+                <div className={`flex-1 flex flex-col justify-between relative bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-repeat opacity-[0.98] ${isCompact ? 'p-5' : 'p-6 md:p-8'}`}>
+                  <div>
+                    <div className={`flex items-center gap-2 ${isCompact ? 'mb-2' : 'mb-4'}`}>
+                      <span className={`text-xs font-bold px-4 py-1.5 rounded-full border shadow-sm ${isPaid ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
+                        {isPaid ? <span className="flex items-center gap-1.5"><CheckCircle2 size={14}/> {lng === 'vi' ? 'Đã thanh toán' : 'Paid'}</span> : <span className="flex items-center gap-1.5"><Clock size={14}/> {lng === 'vi' ? 'Chờ thanh toán' : 'Pending'}</span>}
+                      </span>
+                    </div>
+                    <h4 className={`font-display font-bold text-[#243d91] mb-1 leading-tight ${isCompact ? 'text-lg line-clamp-2' : 'text-2xl md:text-3xl'}`}>
+                      {tk.eventTitle}
+                    </h4>
+                    
+                    <div className={`grid ${isCompact ? 'grid-cols-1 gap-2 mt-3' : 'grid-cols-2 gap-4 md:gap-6 mt-8'}`}>
+                      <div>
+                        <p className="text-[10px] font-bold text-[#243d91]/40 uppercase tracking-widest mb-1.5">{lng === 'vi' ? 'Thời gian' : 'Time'}</p>
+                        <p className="text-sm font-bold text-[#243d91] flex items-center gap-1.5"><CalendarDays size={16} className="text-[#e8539e]"/> {tk.eventDate}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-[#243d91]/40 uppercase tracking-widest mb-1.5">{lng === 'vi' ? 'Địa điểm' : 'Location'}</p>
+                        <p className="text-sm font-bold text-[#243d91] flex items-center gap-1.5"><MapPin size={16} className="text-[#e8539e]"/> {tk.eventLocation}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* TICKET DIVIDER (Perforated line with cutouts) */}
+              <div className={`relative flex items-center justify-center bg-white z-10 w-full h-12 ${!isVertical ? 'md:w-12 md:h-auto' : ''}`}>
+                {/* Top/Left Cutout */}
+                <div className={`absolute rounded-full bg-[#faf9f7] shadow-inner w-10 h-10 top-0 left-1/2 -translate-x-1/2 ${!isVertical ? 'md:-top-5 md:-left-5 md:translate-x-0' : '-top-5'}`} />
+                {/* Bottom/Right Cutout */}
+                <div className={`absolute rounded-full bg-[#faf9f7] shadow-inner w-10 h-10 bottom-0 left-1/2 -translate-x-1/2 ${!isVertical ? 'md:-bottom-5 md:-left-5 md:translate-x-0' : '-bottom-5'}`} />
+                {/* Dashed Line */}
+                <div className={`border-dashed border-[#f0ede6] w-full h-0 border-t-[3px] ${!isVertical ? 'md:w-0 md:h-full md:border-t-0 md:border-l-[3px]' : ''}`} />
+              </div>
+
+              {/* RIGHT SIDE: Stub / QR Code */}
+              <div className={`bg-gradient-to-br from-white to-[#fcfbf9] shrink-0 flex flex-col items-center justify-center relative w-full ${!isVertical ? (isCompact ? 'md:w-44 p-4' : 'md:w-72 p-6 md:p-8') : 'p-6 md:p-8'}`}>
+                <p className={`text-[10px] font-mono font-bold text-[#243d91]/40 tracking-widest uppercase text-center w-full ${isCompact ? 'mb-3' : 'mb-6'}`}>
+                  NO. {tk.id.split('-')[0]}
+                </p>
+                
+                {isPaid ? (
+                  <div className={`bg-white p-3 rounded-2xl shadow-md border border-[#f0ede6] transform group-hover:scale-[1.02] transition-transform ${isCompact ? 'mb-3' : 'mb-6'}`}>
+                    <QRCodeSVG value={tk.id} size={isCompact ? 70 : 120} fgColor="#243d91" />
+                  </div>
+                ) : (
+                  <div className={`bg-white rounded-2xl border border-[#f0ede6] flex items-center justify-center text-amber-500 opacity-50 shadow-sm ${isCompact ? 'w-[70px] h-[70px] mb-3' : 'w-[120px] h-[120px] mb-6'}`}>
+                    <Clock size={isCompact ? 24 : 40} />
+                  </div>
+                )}
+                
+                <div className="w-full pt-4 border-t border-[#f0ede6]/80 text-center">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-[10px] font-bold tracking-widest text-[#243d91]/50 uppercase">{lng === 'vi' ? 'Số lượng' : 'Qty'}</p>
+                    <p className={`font-bold text-[#243d91] ${isCompact ? 'text-xs' : 'text-sm'}`}>{tk.quantity}x</p>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-[10px] font-bold tracking-widest text-[#243d91]/50 uppercase">{lng === 'vi' ? 'Tổng' : 'Total'}</p>
+                    <p className={`font-display font-bold text-[#e8539e] ${isCompact ? 'text-lg' : 'text-xl'}`}>{(tk.totalPrice || 0).toLocaleString('vi-VN')}đ</p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="p-5 bg-[#f0ede6]/30 flex items-center justify-between">
-              <div>
-                <p className="text-xs text-[#243d91]/60 font-mono mb-1">ID: {tk.id.split('-')[0].toUpperCase()}</p>
-                {isPaid && <p className="text-xs font-bold text-emerald-600 flex items-center gap-1"><Check size={12}/> Sẵn sàng check-in</p>}
-              </div>
-              {isPaid ? (
-                <div className="bg-white p-1.5 rounded-xl shadow-sm border border-[#f0ede6]">
-                  <QRCodeSVG value={tk.id} size={50} fgColor="#243d91" />
-                </div>
-              ) : (
-                <div className="w-[50px] h-[50px] bg-white rounded-xl border border-[#f0ede6] flex items-center justify-center text-amber-500 opacity-50">
-                  <Clock size={20} />
-                </div>
-              )}
+            {/* Floating Download Button */}
+            <div className={`mt-4 flex justify-end group-hover:opacity-100 transition-opacity ${!isVertical ? 'md:absolute md:top-4 md:-right-16 md:mt-0 md:opacity-0' : ''}`}>
+              <button 
+                onClick={() => handleDownload(tk.id)}
+                className={`flex items-center gap-2 bg-white rounded-full shadow-lg border border-[#f0ede6] text-[#243d91] font-bold text-sm hover:text-[#e8539e] hover:bg-[#faf9f7] hover:scale-105 transition-all ${!isVertical ? 'px-4 py-2.5 md:p-3' : 'px-4 py-2.5'}`}
+              >
+                <Download size={20} /> <span className={!isVertical ? "md:hidden" : ""}>{lng === 'vi' ? 'Tải vé' : 'Download'}</span>
+              </button>
             </div>
           </div>
         );
       })}
+        </div>
+      )}
     </div>
   );
 }
@@ -776,7 +874,14 @@ function UserTickets({ token }: { token: string }) {
 function UserProfile({ token }: { token: string }) {
   const { lng } = useLanguage();
   const { user, updateUser } = useAuth();
-  const [form, setForm] = useState({ name: user?.name || '', phone: user?.phone || '', bio: user?.bio || '', dob: user?.dob || '' });
+  const [form, setForm] = useState({ 
+    name: user?.name || '', 
+    phone: user?.phone || '', 
+    bio: user?.bio || '', 
+    dob: user?.dob || '',
+    gender: user?.gender || '',
+    address: user?.address || '' 
+  });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -793,43 +898,75 @@ function UserProfile({ token }: { token: string }) {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 items-stretch">
       <div className="md:col-span-1">
-        <div className="bg-white rounded-3xl border border-[#f0ede6] p-6 text-center shadow-sm">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#243d91] to-[#e8539e] mx-auto mb-4 flex items-center justify-center text-white text-3xl font-display font-bold shadow-md">
-            {user?.name?.[0]?.toUpperCase() || 'U'}
-          </div>
-          <h3 className="font-display font-bold text-xl text-[#243d91]">{user?.name}</h3>
-          <p className="text-sm text-[#243d91]/60 mb-4">{user?.email}</p>
-          <div className="flex items-center justify-center gap-2 text-xs font-bold bg-[#f0ede6]/50 py-2 rounded-xl text-[#243d91]">
-            <Star size={14} className="text-amber-500" />
-            {lng === 'vi' ? 'Thành viên TDL' : 'TDL Member'}
+        <div className="relative rounded-[2rem] overflow-hidden p-8 text-center shadow-2xl h-full flex flex-col justify-center min-h-[320px]">
+          {/* Glass background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-[#243d91] to-[#e8539e]" />
+          <div className="absolute inset-0 bg-white opacity-[0.03] bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
+          
+          <div className="relative z-10 flex flex-col items-center">
+            <div className="w-28 h-28 rounded-full bg-white/20 backdrop-blur-md p-2 mb-6 shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+              <div className="w-full h-full rounded-full bg-white/90 flex items-center justify-center text-[#e8539e] text-4xl font-display font-bold">
+                {user?.name?.[0]?.toUpperCase() || 'U'}
+              </div>
+            </div>
+            <h3 className="font-display font-bold text-2xl text-white tracking-wide mb-1">{user?.name}</h3>
+            <p className="text-white/80 text-sm mb-8 font-medium">{user?.email}</p>
+            
+            <div className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold text-xs tracking-widest shadow-xl">
+              <Sparkles size={14} className="text-[#4ecef5]" />
+              {lng === 'vi' ? 'THẺ THÀNH VIÊN TDL' : 'TDL MEMBER'}
+            </div>
           </div>
         </div>
       </div>
       
       <div className="md:col-span-2">
-        <div className="bg-white rounded-3xl border border-[#f0ede6] p-6 lg:p-8 shadow-sm">
-          <h3 className="font-bold text-xl text-[#243d91] mb-6 flex items-center gap-2"><User size={20}/> {lng === 'vi' ? 'Cập nhật hồ sơ' : 'Update Profile'}</h3>
-          <div className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="bg-white rounded-[2rem] border-2 border-[#f0ede6]/60 p-6 md:p-10 shadow-[0_8px_30px_rgba(0,0,0,0.04)] h-full">
+          <h3 className="font-display font-bold text-2xl text-[#243d91] mb-8 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#243d91]/5 flex items-center justify-center text-[#243d91]">
+              <User size={20}/>
+            </div>
+            {lng === 'vi' ? 'Hồ sơ của bạn' : 'Your Profile'}
+          </h3>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField label={lng === 'vi' ? 'Họ và tên' : 'Full name'}>
-                <input className={inputCls} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+                <input className={inputCls} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder={lng === 'vi' ? 'Nhập họ và tên...' : 'Enter your name...'} />
               </FormField>
               <FormField label={lng === 'vi' ? 'Số điện thoại' : 'Phone'}>
-                <input className={inputCls} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+                <input className={inputCls} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="09xx xxx xxx" />
               </FormField>
             </div>
-            <FormField label={lng === 'vi' ? 'Ngày sinh' : 'Date of birth'}>
-              <input className={inputCls} type="date" value={form.dob} onChange={e => setForm(f => ({ ...f, dob: e.target.value }))} />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField label={lng === 'vi' ? 'Ngày sinh' : 'Date of birth'}>
+                <input className={inputCls} type="date" value={form.dob} onChange={e => setForm(f => ({ ...f, dob: e.target.value }))} />
+              </FormField>
+              <FormField label={lng === 'vi' ? 'Giới tính' : 'Gender'}>
+                <select className={inputCls} value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}>
+                  <option value="">{lng === 'vi' ? 'Chọn giới tính' : 'Select gender'}</option>
+                  <option value="male">{lng === 'vi' ? 'Nam' : 'Male'}</option>
+                  <option value="female">{lng === 'vi' ? 'Nữ' : 'Female'}</option>
+                  <option value="other">{lng === 'vi' ? 'Khác' : 'Other'}</option>
+                </select>
+              </FormField>
+            </div>
+
+            <FormField label={lng === 'vi' ? 'Địa chỉ' : 'Address'}>
+              <input className={inputCls} value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder={lng === 'vi' ? 'Nhập địa chỉ của bạn...' : 'Enter your address...'} />
             </FormField>
+
             <FormField label="Bio (Sở thích/Tính cách)">
-              <textarea className={`${inputCls} resize-none`} rows={4} placeholder={lng === 'vi' ? "Ví dụ: Thích nến thơm, làm gốm, nghe nhạc Indie..." : "E.g: Love candles, pottery, indie music..."} value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} />
+              <textarea className={`${inputCls} resize-none min-h-[100px]`} placeholder={lng === 'vi' ? "Ví dụ: Thích nến thơm, làm gốm, nghe nhạc Indie..." : "E.g: Love candles, pottery, indie music..."} value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} />
             </FormField>
-            <div className="pt-2">
-              <button onClick={handleSave} disabled={saving} className="w-full md:w-auto md:min-w-[200px] py-3.5 bg-[#e8539e] text-white font-bold rounded-xl hover:bg-[#e8539e]/90 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-md shadow-[#e8539e]/20">
-                {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : saved ? <Check size={16} /> : null}
-                {saved ? (lng === 'vi' ? 'Đã lưu!' : 'Saved!') : (lng === 'vi' ? 'Lưu thay đổi' : 'Save Changes')}
+            
+            <div className="pt-4 border-t border-[#f0ede6]/60">
+              <button onClick={handleSave} disabled={saving} className="w-full md:w-auto md:min-w-[220px] py-4 bg-[#e8539e] text-white font-bold rounded-2xl hover:bg-[#e8539e]/90 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(232,83,158,0.25)] hover:shadow-[0_8px_25px_rgba(232,83,158,0.4)] hover:-translate-y-0.5">
+                {saving ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : saved ? <Check size={18} /> : null}
+                {saved ? (lng === 'vi' ? 'Đã lưu thành công!' : 'Saved successfully!') : (lng === 'vi' ? 'Lưu thay đổi' : 'Save Changes')}
               </button>
             </div>
           </div>
@@ -1027,8 +1164,8 @@ export default function DashboardView() {
   const isAdmin = user?.role === 'admin';
 
   const userTabs = [
-    { id: 'tickets', label: lng === 'vi' ? '🎟 Vé của tôi' : '🎟 My Tickets' },
-    { id: 'profile', label: lng === 'vi' ? '👤 Hồ sơ' : '👤 Profile' },
+    { id: 'tickets', label: lng === 'vi' ? 'Vé của tôi' : 'My Tickets', icon: <Ticket size={16} /> },
+    { id: 'profile', label: lng === 'vi' ? 'Hồ sơ' : 'Profile', icon: <User size={16} /> },
   ];
 
   const adminTabs = [
@@ -1153,14 +1290,17 @@ export default function DashboardView() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 overflow-x-auto no-scrollbar mb-6 bg-white rounded-2xl p-1 border border-[#f0ede6]">
+      <div className="flex gap-6 mb-8 border-b-2 border-[#f0ede6]">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === tab.id ? 'bg-[#243d91] text-white shadow-md' : 'text-[#243d91]/60 hover:text-[#243d91] hover:bg-[#f0ede6]/80'}`}
+            className={`relative pb-4 flex items-center gap-2 text-sm font-bold transition-all ${activeTab === tab.id ? 'text-[#e8539e]' : 'text-[#243d91]/50 hover:text-[#243d91]'}`}
           >
-            {tab.label}
+            {tab.icon} {tab.label}
+            {activeTab === tab.id && (
+              <motion.div layoutId="userTabIndicator" className="absolute bottom-[-2px] left-0 right-0 h-0.5 bg-[#e8539e]" />
+            )}
           </button>
         ))}
       </div>

@@ -11,6 +11,8 @@ export const users = pgTable('users', {
   dob: text('dob').default(''),
   role: text('role').default('user').notNull(), // 'user' | 'admin'
   avatarUrl: text('avatar_url').default(''),
+  gender: text('gender').default(''), // 'male' | 'female' | 'other' | ''
+  address: text('address').default(''),
   preferences: text('preferences').array().default([]),
   notifyEmail: boolean('notify_email').default(true),
   notifySms: boolean('notify_sms').default(false),
