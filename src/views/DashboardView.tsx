@@ -244,7 +244,21 @@ function AdminEvents({ token }: { token: string }) {
                 </FormField>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <FormField label="Ngày"><input className={inputCls} value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} placeholder="15/07/2026" /></FormField>
+                <FormField label="Ngày">
+                  <input 
+                    type="date" 
+                    className={inputCls} 
+                    value={form.date.includes('/') ? form.date.split('/').reverse().join('-') : form.date} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (!val) setForm(f => ({ ...f, date: '' }));
+                      else {
+                        const [y, m, d] = val.split('-');
+                        setForm(f => ({ ...f, date: `${d}/${m}/${y}` }));
+                      }
+                    }} 
+                  />
+                </FormField>
                 <FormField label="Giờ"><input className={inputCls} value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} placeholder="14:00 - 17:00" /></FormField>
               </div>
               <FormField label="Địa điểm"><input className={inputCls} value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="TDL Studio..." /></FormField>
@@ -286,8 +300,8 @@ function AdminEvents({ token }: { token: string }) {
                   {form.schedule.map((item, idx) => (
                     <div key={idx} className="flex gap-2 items-center bg-[#f0ede6]/30 p-2 rounded-xl border border-[#f0ede6]">
                       <input 
-                        className={`${inputCls} w-24 !py-1.5 !text-sm`} 
-                        placeholder="15 phút" 
+                        className={`${inputCls.replace('w-full', '')} w-28 !py-1.5 !text-sm`} 
+                        placeholder="30 phút" 
                         value={item.duration} 
                         onChange={e => {
                           const newSchedule = [...form.schedule];
@@ -296,7 +310,7 @@ function AdminEvents({ token }: { token: string }) {
                         }}
                       />
                       <input 
-                        className={`${inputCls} flex-1 !py-1.5 !text-sm`} 
+                        className={`${inputCls.replace('w-full', '')} flex-1 !py-1.5 !text-sm`} 
                         placeholder="Hoạt động..." 
                         value={item.activity} 
                         onChange={e => {
