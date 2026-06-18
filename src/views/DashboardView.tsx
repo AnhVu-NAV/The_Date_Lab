@@ -129,7 +129,7 @@ function AdminEvents({ token }: { token: string }) {
   const [uploadingImg, setUploadingImg] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const emptyForm = { title: '', type: 'Gốm', date: '', time: '', location: '', locationType: 'Fixed', price: '', maxAttendees: '20', imageUrl: '', status: 'Available', description: '', forWho: 'Couple', addonIds: [] as string[] };
+  const emptyForm = { title: '', type: 'Gốm', date: '', time: '', location: '', locationType: 'Fixed', price: '', maxAttendees: '20', imageUrl: '', status: 'Available', description: '', forWho: 'Couple', addonIds: [] as string[], schedule: [] as { duration: string; activity: string }[] };
   const [form, setForm] = useState(emptyForm);
   const [addons, setAddons] = useState<any[]>([]);
 
@@ -157,7 +157,7 @@ function AdminEvents({ token }: { token: string }) {
 
   const handleSave = async () => {
     try {
-      const data = { ...form, price: Number(form.price), maxAttendees: Number(form.maxAttendees), forWho: [form.forWho], schedule: [] };
+      const data = { ...form, price: Number(form.price), maxAttendees: Number(form.maxAttendees), forWho: [form.forWho], schedule: form.schedule };
       if (editEvent) await api.updateEvent(editEvent.id, data, token);
       else await api.createEvent(data, token);
       setShowForm(false); setEditEvent(null); setForm(emptyForm);
@@ -173,7 +173,7 @@ function AdminEvents({ token }: { token: string }) {
 
   const openEdit = (ev: any) => {
     setEditEvent(ev);
-    setForm({ title: ev.title, type: ev.type || '', date: ev.date || '', time: ev.time || '', location: ev.location || '', locationType: ev.locationType || 'Fixed', price: String(ev.price || ''), maxAttendees: String(ev.maxAttendees || 20), imageUrl: ev.imageUrl || '', status: ev.status || 'Available', description: ev.description || '', forWho: (ev.forWho || ['Couple'])[0], addonIds: ev.addonIds || [] });
+    setForm({ title: ev.title, type: ev.type || '', date: ev.date || '', time: ev.time || '', location: ev.location || '', locationType: ev.locationType || 'Fixed', price: String(ev.price || ''), maxAttendees: String(ev.maxAttendees || 20), imageUrl: ev.imageUrl || '', status: ev.status || 'Available', description: ev.description || '', forWho: (ev.forWho || ['Couple'])[0], addonIds: ev.addonIds || [], schedule: Array.isArray(ev.schedule) ? ev.schedule : [] });
     setShowForm(true);
   };
 
@@ -279,6 +279,48 @@ function AdminEvents({ token }: { token: string }) {
                       />
                     </label>
                   ))}
+                </div>
+              </FormField>
+              <FormField label="Lịch trình trải nghiệm">
+                <div className="space-y-2">
+                  {form.schedule.map((item, idx) => (
+                    <div key={idx} className="flex gap-2 items-center bg-[#f0ede6]/30 p-2 rounded-xl border border-[#f0ede6]">
+                      <input 
+                        className={`${inputCls} w-24 !py-1.5 !text-sm`} 
+                        placeholder="15 phút" 
+                        value={item.duration} 
+                        onChange={e => {
+                          const newSchedule = [...form.schedule];
+                          newSchedule[idx].duration = e.target.value;
+                          setForm(f => ({ ...f, schedule: newSchedule }));
+                        }}
+                      />
+                      <input 
+                        className={`${inputCls} flex-1 !py-1.5 !text-sm`} 
+                        placeholder="Hoạt động..." 
+                        value={item.activity} 
+                        onChange={e => {
+                          const newSchedule = [...form.schedule];
+                          newSchedule[idx].activity = e.target.value;
+                          setForm(f => ({ ...f, schedule: newSchedule }));
+                        }}
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setForm(f => ({ ...f, schedule: f.schedule.filter((_, i) => i !== idx) }))}
+                        className="w-8 h-8 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 flex items-center justify-center transition-all shrink-0"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                  <button 
+                    type="button" 
+                    onClick={() => setForm(f => ({ ...f, schedule: [...f.schedule, { duration: '', activity: '' }] }))}
+                    className="w-full py-2 rounded-xl border-2 border-dashed border-[#f0ede6] text-sm font-bold text-[#e8539e] hover:bg-[#e8539e]/5 transition-all flex items-center justify-center gap-2"
+                  >
+                    + Thêm lịch trình
+                  </button>
                 </div>
               </FormField>
               <FormField label="Ảnh sự kiện">
