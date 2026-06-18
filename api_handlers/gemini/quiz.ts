@@ -1,7 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI, Type } from '@google/genai';
+import { requireEnv } from '../_lib/helpers';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+function getAi() {
+  return new GoogleGenAI({ apiKey: requireEnv('GEMINI_API_KEY') });
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
@@ -13,7 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 ${languageInstruction}
 Return a JSON object with: personalityType (string), currentMood (string), eventTypes (array of strings).`;
 
-    const response = await ai.models.generateContent({
+    const response = await getAi().models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
       config: {

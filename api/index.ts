@@ -41,6 +41,8 @@ import ticketsId from '../api_handlers/tickets/[id]';
 import vaultIndex from '../api_handlers/vault/index';
 import vaultUpload from '../api_handlers/vault/upload';
 
+export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // Initialize req.query if undefined
@@ -57,79 +59,83 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (seg0 === 'admin') {
       if (seg1 === 'addons') {
-        if (segments.length === 2) return adminAddons(req, res);
+        if (segments.length === 2) return await adminAddons(req, res);
         if (segments.length === 3) {
           req.query.id = seg2;
-          return adminAddonsId(req, res);
+          return await adminAddonsId(req, res);
         }
       }
       if (seg1 === 'bank') {
-        if (segments.length === 2) return adminBank(req, res);
+        if (segments.length === 2) return await adminBank(req, res);
         if (segments.length === 3) {
           req.query.id = seg2;
-          return adminBankId(req, res);
+          return await adminBankId(req, res);
         }
         if (segments.length === 4 && seg3 === 'activate') {
           req.query.id = seg2;
-          return adminBankIdActivate(req, res);
+          return await adminBankIdActivate(req, res);
         }
       }
-      if (seg1 === 'settings') return adminSettings(req, res);
-      if (seg1 === 'stats') return adminStats(req, res);
-      if (seg1 === 'users') return adminUsers(req, res);
+      if (seg1 === 'settings') return await adminSettings(req, res);
+      if (seg1 === 'stats') return await adminStats(req, res);
+      if (seg1 === 'users') return await adminUsers(req, res);
     }
 
     if (seg0 === 'auth') {
-      if (seg1 === 'login') return authLogin(req, res);
-      if (seg1 === 'me') return authMe(req, res);
-      if (seg1 === 'register') return authRegister(req, res);
+      if (seg1 === 'login') return await authLogin(req, res);
+      if (seg1 === 'me') return await authMe(req, res);
+      if (seg1 === 'register') return await authRegister(req, res);
     }
 
     if (seg0 === 'events') {
-      if (segments.length === 1) return eventsIndex(req, res);
+      if (segments.length === 1) return await eventsIndex(req, res);
       if (segments.length === 2) {
         req.query.id = seg1;
-        return eventsId(req, res);
+        return await eventsId(req, res);
       }
     }
 
     if (seg0 === 'gemini') {
-      if (seg1 === 'chatbot') return geminiChatbot(req, res);
-      if (seg1 === 'quiz') return geminiQuiz(req, res);
+      if (seg1 === 'chatbot') return await geminiChatbot(req, res);
+      if (seg1 === 'quiz') return await geminiQuiz(req, res);
     }
 
     if (seg0 === 'payment' && seg1 === 'qr') {
-      return paymentQr(req, res);
+      return await paymentQr(req, res);
     }
 
     if (seg0 === 'settings') {
-      return settingsIndex(req, res);
+      return await settingsIndex(req, res);
     }
 
     if (seg0 === 'tarot') {
-      if (segments.length === 1) return tarotIndex(req, res);
+      if (segments.length === 1) return await tarotIndex(req, res);
       if (segments.length === 2) {
         req.query.id = seg1;
-        return tarotId(req, res);
+        return await tarotId(req, res);
       }
     }
 
     if (seg0 === 'tickets') {
-      if (segments.length === 1) return ticketsIndex(req, res);
+      if (segments.length === 1) return await ticketsIndex(req, res);
       if (segments.length === 2) {
         req.query.id = seg1;
-        return ticketsId(req, res);
+        return await ticketsId(req, res);
       }
     }
 
     if (seg0 === 'vault') {
-      if (segments.length === 1) return vaultIndex(req, res);
-      if (seg1 === 'upload') return vaultUpload(req, res);
+      if (segments.length === 1) return await vaultIndex(req, res);
+      if (seg1 === 'upload') return await vaultUpload(req, res);
     }
 
     return res.status(404).json({ error: `API route not found: /api/${routePath}` });
   } catch (error: any) {
     console.error('API Error:', error);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    const message = error?.message || 'Internal Server Error';
+    const isConfigError = message.startsWith('Missing required environment variable:');
+    return res.status(500).json({
+      error: isConfigError ? message : 'Internal Server Error',
+    });
   }
 }

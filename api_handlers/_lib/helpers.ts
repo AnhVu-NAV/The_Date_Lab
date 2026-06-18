@@ -10,8 +10,16 @@ const JWT_SECRET = new TextEncoder().encode(
 );
 
 // DB client (server-side only)
+export function requireEnv(name: string) {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
 export function getDb() {
-  const sql = neon(process.env.DATABASE_URL!);
+  const sql = neon(requireEnv('DATABASE_URL'));
   return drizzle(sql, { schema });
 }
 
