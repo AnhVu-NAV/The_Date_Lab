@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI, Type } from '@google/genai';
-import { requireEnv } from '../_lib/helpers';
+import { requireEnv } from '../_lib/helpers.js';
 
 function getAi() {
   return new GoogleGenAI({ apiKey: requireEnv('GEMINI_API_KEY') });

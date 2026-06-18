@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { eq, desc } from 'drizzle-orm';
-import { getDb, requireAuth, setCors } from '../_lib/helpers';
-import { vaultMemories } from '../../src/db/schema';
+import { getDb, requireAuth, setCors } from '../_lib/helpers.js';
+import { vaultMemories } from '../../src/db/schema.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(res);

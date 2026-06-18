@@ -1,45 +1,45 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // Admin
-import adminAddons from '../api_handlers/admin/addons_main';
-import adminAddonsId from '../api_handlers/admin/addons/[id]';
-import adminBank from '../api_handlers/admin/bank_main';
-import adminBankId from '../api_handlers/admin/bank/[id]_main';
-import adminBankIdActivate from '../api_handlers/admin/bank/[id]/activate';
-import adminSettings from '../api_handlers/admin/settings';
-import adminStats from '../api_handlers/admin/stats';
-import adminUsers from '../api_handlers/admin/users';
+import adminAddons from '../api_handlers/admin/addons_main.js';
+import adminAddonsId from '../api_handlers/admin/addons/[id].js';
+import adminBank from '../api_handlers/admin/bank_main.js';
+import adminBankId from '../api_handlers/admin/bank/[id]_main.js';
+import adminBankIdActivate from '../api_handlers/admin/bank/[id]/activate.js';
+import adminSettings from '../api_handlers/admin/settings.js';
+import adminStats from '../api_handlers/admin/stats.js';
+import adminUsers from '../api_handlers/admin/users.js';
 
 // Auth
-import authLogin from '../api_handlers/auth/login';
-import authMe from '../api_handlers/auth/me';
-import authRegister from '../api_handlers/auth/register';
+import authLogin from '../api_handlers/auth/login.js';
+import authMe from '../api_handlers/auth/me.js';
+import authRegister from '../api_handlers/auth/register.js';
 
 // Events
-import eventsIndex from '../api_handlers/events/index';
-import eventsId from '../api_handlers/events/[id]';
+import eventsIndex from '../api_handlers/events/index.js';
+import eventsId from '../api_handlers/events/[id].js';
 
 // Gemini
-import geminiChatbot from '../api_handlers/gemini/chatbot';
-import geminiQuiz from '../api_handlers/gemini/quiz';
+import geminiChatbot from '../api_handlers/gemini/chatbot.js';
+import geminiQuiz from '../api_handlers/gemini/quiz.js';
 
 // Payment
-import paymentQr from '../api_handlers/payment/qr';
+import paymentQr from '../api_handlers/payment/qr.js';
 
 // Settings
-import settingsIndex from '../api_handlers/settings/index';
+import settingsIndex from '../api_handlers/settings/index.js';
 
 // Tarot
-import tarotIndex from '../api_handlers/tarot/index';
-import tarotId from '../api_handlers/tarot/[id]';
+import tarotIndex from '../api_handlers/tarot/index.js';
+import tarotId from '../api_handlers/tarot/[id].js';
 
 // Tickets
-import ticketsIndex from '../api_handlers/tickets/index';
-import ticketsId from '../api_handlers/tickets/[id]';
+import ticketsIndex from '../api_handlers/tickets/index.js';
+import ticketsId from '../api_handlers/tickets/[id].js';
 
 // Vault
-import vaultIndex from '../api_handlers/vault/index';
-import vaultUpload from '../api_handlers/vault/upload';
+import vaultIndex from '../api_handlers/vault/index.js';
+import vaultUpload from '../api_handlers/vault/upload.js';
 
 export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
 
