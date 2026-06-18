@@ -18,10 +18,10 @@ import tarotIndex from './api_handlers/tarot/index.ts';
 import tarotId from './api_handlers/tarot/[id].ts';
 import adminStats from './api_handlers/admin/stats.ts';
 import adminUsers from './api_handlers/admin/users.ts';
-import adminBankIndex from './api_handlers/admin/bank.ts';
-import adminBankId from './api_handlers/admin/bank/[id].ts';
+import adminBankIndex from './api_handlers/admin/bank_main.ts';
+import adminBankId from './api_handlers/admin/bank/[id]_main.ts';
 import adminBankActivate from './api_handlers/admin/bank/[id]/activate.ts';
-import adminAddonsIndex from './api_handlers/admin/addons.ts';
+import adminAddonsIndex from './api_handlers/admin/addons_main.ts';
 import adminAddonsId from './api_handlers/admin/addons/[id].ts';
 
 async function startServer() {
