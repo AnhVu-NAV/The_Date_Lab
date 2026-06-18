@@ -7,7 +7,8 @@ import TarotModal from './TarotModal';
 import Logo from '../assets/Logo/2.png';
 import { useLanguage } from '../i18n';
 import { useAuth } from '../context/AuthContext';
-
+import { api } from '../lib/api';
+import { useEffect } from 'react';
 export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -15,6 +16,14 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [tarotOpen, setTarotOpen] = useState(false);
+  const [siteSettings, setSiteSettings] = useState<any>({});
+
+  useEffect(() => {
+    // Fetch global settings
+    api.getSettings()
+      .then(data => setSiteSettings(data.contact_info || {}))
+      .catch(() => {});
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -223,8 +232,20 @@ export default function Layout() {
               {lng === 'vi' ? 'Liên hệ' : 'Contact'}
             </h4>
             <div className="flex flex-col gap-2.5 text-sm text-white/50">
-              <span className="flex items-center gap-2"><MapPin size={13} className="text-[#4ecef5]" /> ĐH FPT Hoà Lạc, Hà Nội</span>
-              <span className="flex items-center gap-2"><Mail size={13} className="text-[#4ecef5]" /> hello@thedatelab.vn</span>
+              <span className="flex items-center gap-2">
+                <MapPin size={13} className="text-[#4ecef5]" /> 
+                {siteSettings.address || 'ĐH FPT Hoà Lạc, Hà Nội'}
+              </span>
+              <span className="flex items-center gap-2">
+                <Mail size={13} className="text-[#4ecef5]" /> 
+                {siteSettings.email || 'hello@thedatelab.vn'}
+              </span>
+              {siteSettings.phone && (
+                <span className="flex items-center gap-2">
+                  <span className="text-[#4ecef5] font-bold text-[10px]">TEL</span>
+                  {siteSettings.phone}
+                </span>
+              )}
             </div>
           </div>
         </div>

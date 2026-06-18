@@ -104,6 +104,14 @@ export const api = {
     fetch(`${BASE}/api/admin/bank/${id}`, {
       method: 'DELETE', headers: authHeaders(token),
     }).then(r => handleResponse<any>(r)),
+
+  // ─── Settings ─────────────────────────────────────────────────────────────────
+  getSettings: () =>
+    fetch(`${BASE}/api/settings`).then(r => handleResponse<any>(r)),
+  updateSettings: (data: any, token: string) =>
+    fetch(`${BASE}/api/admin/settings`, {
+      method: 'PUT', headers: authHeaders(token), body: JSON.stringify(data),
+    }).then(r => handleResponse<any>(r)),
   activateBank: (id: string, token: string) =>
     fetch(`${BASE}/api/admin/bank/${id}/activate`, {
       method: 'PUT', headers: authHeaders(token),

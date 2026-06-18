@@ -4,7 +4,7 @@ import {
   User, Ticket, Camera, Shield, BarChart3, CalendarDays, Users,
   CreditCard, Layers, Plus, Pencil, Trash2, Check, X, ChevronDown,
   Upload, Star, LogOut, Bell, TrendingUp, Clock, CircleCheck, AlertCircle, MapPin,
-  LayoutDashboard, Landmark, ShoppingBag, Sparkles, Home, Lightbulb, CheckCircle2
+  LayoutDashboard, Landmark, ShoppingBag, Sparkles, Home, Lightbulb, CheckCircle2, Settings
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
@@ -956,6 +956,68 @@ function AdminAddons({ token }: { token: string }) {
   );
 }
 
+// ─── Admin: Settings ──────────────────────────────────────────────────────────
+function AdminSettings({ token }: { token: string }) {
+  const { lng } = useLanguage();
+  const [settings, setSettings] = useState<any>({});
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    api.getSettings().then(data => setSettings(data.contact_info || {})).catch(console.error);
+  }, []);
+
+  const handleSave = async () => {
+    setLoading(true);
+    setMessage('');
+    try {
+      await api.updateSettings({ contact_info: settings }, token);
+      setMessage(lng === 'vi' ? 'Đã lưu cài đặt' : 'Settings saved');
+    } catch (e: any) {
+      setMessage(e.message || 'Lỗi lưu cài đặt');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#f0ede6]">
+        <h3 className="font-display font-bold text-xl text-[#243d91] mb-6">Thông tin liên hệ (Footer)</h3>
+        
+        <div className="space-y-4 max-w-xl">
+          <FormField label="Địa chỉ">
+            <input value={settings.address || ''} onChange={e => setSettings({...settings, address: e.target.value})} className={inputCls} placeholder="ĐH FPT Hoà Lạc, Hà Nội" />
+          </FormField>
+          <FormField label="Email">
+            <input value={settings.email || ''} onChange={e => setSettings({...settings, email: e.target.value})} className={inputCls} placeholder="hello@thedatelab.vn" />
+          </FormField>
+          <FormField label="Điện thoại">
+            <input value={settings.phone || ''} onChange={e => setSettings({...settings, phone: e.target.value})} className={inputCls} placeholder="0912345678" />
+          </FormField>
+          <FormField label="Facebook Link">
+            <input value={settings.facebook || ''} onChange={e => setSettings({...settings, facebook: e.target.value})} className={inputCls} placeholder="https://facebook.com/..." />
+          </FormField>
+          <FormField label="Instagram Link">
+            <input value={settings.instagram || ''} onChange={e => setSettings({...settings, instagram: e.target.value})} className={inputCls} placeholder="https://instagram.com/..." />
+          </FormField>
+        </div>
+
+        <div className="mt-8 flex items-center gap-4">
+          <button
+            onClick={handleSave}
+            disabled={loading}
+            className="bg-[#243d91] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#243d91]/90 transition-all shadow-lg flex items-center gap-2"
+          >
+            {loading ? <span className="animate-spin text-xl">⏳</span> : <Check size={18} />} Lưu cài đặt
+          </button>
+          {message && <span className="text-sm font-bold text-[#e8539e]">{message}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── MAIN DASHBOARD ──────────────────────────────────────────────────────────
 export default function DashboardView() {
   const { lng } = useLanguage();
@@ -977,6 +1039,7 @@ export default function DashboardView() {
     { id: 'bank', label: lng === 'vi' ? 'Ngân hàng' : 'Bank', icon: <Landmark size={18} /> },
     { id: 'addons', label: lng === 'vi' ? 'Add-ons' : 'Add-ons', icon: <ShoppingBag size={18} /> },
     { id: 'users', label: lng === 'vi' ? 'Người dùng' : 'Users', icon: <Users size={18} /> },
+    { id: 'settings', label: lng === 'vi' ? 'Cài đặt' : 'Settings', icon: <Settings size={18} /> },
   ];
 
   const tabs = isAdmin ? adminTabs : userTabs;
@@ -1060,6 +1123,7 @@ export default function DashboardView() {
                   {activeTab === 'bank' && <AdminBank token={token} />}
                   {activeTab === 'addons' && <AdminAddons token={token} />}
                   {activeTab === 'users' && <AdminUsers token={token} />}
+                  {activeTab === 'settings' && <AdminSettings token={token} />}
                 </motion.div>
               </AnimatePresence>
             </div>

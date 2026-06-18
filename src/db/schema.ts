@@ -112,6 +112,14 @@ export const addons = pgTable('addons', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+// ─── Settings (Admin managed) ────────────────────────────────────────────────
+export const settings = pgTable('settings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  key: text('key').notNull().unique(), // e.g. 'contact_info'
+  value: jsonb('value').default({}), // stores phone, email, address, etc.
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -122,3 +130,4 @@ export type Ticket = typeof tickets.$inferSelect;
 export type VaultMemory = typeof vaultMemories.$inferSelect;
 export type BankAccount = typeof bankAccounts.$inferSelect;
 export type Addon = typeof addons.$inferSelect;
+export type Setting = typeof settings.$inferSelect;
