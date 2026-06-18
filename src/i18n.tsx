@@ -35,6 +35,10 @@ export const translations = {
     aiDresscode: 'AI Gợi ý Trang Phục',
     
     // Feature 1: Filters
+    filterAll: 'Tất cả',
+    filterCouple: 'Cặp đôi',
+    filterGroup: 'Hội bạn',
+    filterSolo: 'Solo',
     filterRelationship: 'Đi cùng ai?',
     filterTopic: 'Chủ đề',
     topicCandle: 'Nến thơm',
@@ -156,6 +160,10 @@ export const translations = {
     aiDresscode: 'AI Dresscode Suggestion',
     
     // Feature 1: Filters
+    filterAll: 'All',
+    filterCouple: 'Couples',
+    filterGroup: 'Groups',
+    filterSolo: 'Solo',
     filterRelationship: 'Who with?',
     filterTopic: 'Topic',
     topicCandle: 'Candles',

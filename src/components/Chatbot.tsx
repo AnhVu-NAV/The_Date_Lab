@@ -10,11 +10,18 @@ interface Msg { role: 'user' | 'bot'; text: string; }
 const QUICK_REPLIES_VI = ['Sự kiện sắp tới?', 'Dresscode gợi ý?', 'Giá vé bao nhiêu?'];
 const QUICK_REPLIES_EN = ['Upcoming events?', 'Dresscode tips?', 'Ticket prices?'];
 
-const MOCK_RESPONSES: Record<string, string> = {
+const MOCK_RESPONSES_VI: Record<string, string> = {
   default: 'Xin chào! Mình là trợ lý TDL 💕 Mình có thể giúp bạn tìm sự kiện phù hợp, gợi ý trang phục, hoặc giải đáp bất kỳ thắc mắc nào nhé!',
   'Sự kiện sắp tới?': 'Hiện TDL có 4 sự kiện sắp diễn ra:\n1. 🏺 Làm Gốm Pastel — 15/07\n2. 🌸 Chế Tác Nước Hoa — 16/07\n3. 🕯 Đổ Nến Thơm — 18/07\n4. 🎂 Baking Bánh Bento — 20/07\nBạn thích cái nào nhất?',
   'Dresscode gợi ý?': 'Tùy theo buổi nhé! Gợi ý chung:\n👗 Cặp đôi: Tông pastel nhẹ nhàng, đồ đôi cute\n🎉 Hội bạn: Màu sắc vui tươi, thoải mái\n✨ Solo: Casual chic, thoải mái là nhất!\nTránh đồ trắng vì có thể dính màu khi làm thủ công 😄',
   'Giá vé bao nhiêu?': 'Giá vé tại TDL từ 350,000đ — 650,000đ/người tùy workshop. Mua combo 2 người sẽ được giảm 10% nhé! 🎁',
+};
+
+const MOCK_RESPONSES_EN: Record<string, string> = {
+  default: 'Hello! I am your TDL assistant 💕 I can help you find suitable events, suggest outfits, or answer any questions!',
+  'Upcoming events?': 'We currently have 4 upcoming events:\n1. 🏺 Pastel Pottery — 15/07\n2. 🌸 Perfume Crafting — 16/07\n3. 🕯 Scented Candles — 18/07\n4. 🎂 Bento Cake Baking — 20/07\nWhich one do you prefer?',
+  'Dresscode tips?': 'It depends on the session! General tips:\n👗 Couples: Light pastels, cute matching outfits\n🎉 Groups: Bright, fun, and comfortable colors\n✨ Solo: Casual chic, comfort is key!\nAvoid white clothes to prevent stains during crafting 😄',
+  'Ticket prices?': 'Ticket prices at TDL range from 350,000 VND — 650,000 VND/person depending on the workshop. Buy a 2-person combo to get 10% off! 🎁',
 };
 
 export default function Chatbot() {
@@ -71,7 +78,11 @@ export default function Chatbot() {
       setMsgs((p) => [...p, { role: 'bot', text: data.reply }]);
     } catch {
       // Fallback mock
-      const reply = MOCK_RESPONSES[text] || 'Câu hỏi hay đó! Mình sẽ hỏi team TDL và phản hồi sớm nhất có thể nhé 💕';
+      const mocks = lng === 'vi' ? MOCK_RESPONSES_VI : MOCK_RESPONSES_EN;
+      const fallbackMsg = lng === 'vi' 
+        ? 'Câu hỏi hay đó! Mình sẽ hỏi team TDL và phản hồi sớm nhất có thể nhé 💕'
+        : 'Great question! I will ask the TDL team and get back to you soon 💕';
+      const reply = mocks[text] || fallbackMsg;
       setTimeout(() => setMsgs((p) => [...p, { role: 'bot', text: reply }]), 800);
     } finally {
       setLoading(false);

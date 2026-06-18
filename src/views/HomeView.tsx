@@ -315,16 +315,16 @@ export default function HomeView() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={lng === 'vi' ? 'Tìm sự kiện, workshop...' : t('searchPlaceholder')}
+            placeholder={t('searchPlaceholder')}
             className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-[#f0ede6]/60 text-sm font-semibold text-[#243d91] placeholder-[#243d91]/30 outline-none focus:bg-[#f0ede6]"
           />
         </div>
         <div className="flex gap-2 overflow-x-auto shrink-0">
           {[
-            { val: '', label: 'Tất cả' },
-            { val: 'Couple', label: 'Cặp đôi' },
-            { val: 'Group', label: 'Hội bạn' },
-            { val: 'Solo', label: 'Solo' },
+            { val: '', label: t('filterAll') },
+            { val: 'Couple', label: t('filterCouple') },
+            { val: 'Group', label: t('filterGroup') },
+            { val: 'Solo', label: t('filterSolo') },
           ].map((f) => (
             <button
               key={f.val}
