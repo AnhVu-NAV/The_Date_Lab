@@ -43,20 +43,17 @@ import vaultUpload from '../api_handlers/vault/upload';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    const url = req.url || '';
-    const pathOnly = url.split('?')[0];
-    
-    // Remove /api prefix and trailing slashes
-    const routePath = pathOnly.replace(/^\/api\/?/, '').replace(/\/$/, '');
+    // Initialize req.query if undefined
+    if (!req.query) req.query = {};
+
+    // Use the route parameter injected by Vercel rewrite
+    const routePath = (req.query.route as string) || '';
     const segments = routePath.split('/').filter(Boolean);
 
     const seg0 = segments[0];
     const seg1 = segments[1];
     const seg2 = segments[2];
     const seg3 = segments[3];
-
-    // Initialize req.query if undefined (though VercelRequest should have it)
-    if (!req.query) req.query = {};
 
     if (seg0 === 'admin') {
       if (seg1 === 'addons') {
