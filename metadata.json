@@ -1,0 +1,6 @@
+{
+  "name": "VibeMatch Events",
+  "description": "A personalized event discovery platform with fun quizzes, Tarot readings, AI-powered weather advice, and dresscode suggestions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
