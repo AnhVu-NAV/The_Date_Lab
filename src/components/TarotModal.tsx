@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, RefreshCw, Ticket } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
+import { api } from '../lib/api';
 
 interface TarotModalProps {
   isOpen: boolean;
@@ -112,12 +113,22 @@ export default function TarotModal({ isOpen, onClose }: TarotModalProps) {
   const navigate = useNavigate();
   const { lng, t } = useLanguage();
   const [phase, setPhase] = useState<'intro' | 'flipping' | 'revealed'>('intro');
-  const [pickedCard, setPickedCard] = useState<typeof TAROT_CARDS[0] | null>(null);
+  const [pickedCard, setPickedCard] = useState<any | null>(null);
+  const [cards, setCards] = useState<any[]>(TAROT_CARDS);
+
+  // Fetch real cards from DB when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      api.getTarotCards()
+        .then(data => { if (data.length > 0) setCards(data); })
+        .catch(() => {}); // fall back to hardcoded
+    }
+  }, [isOpen]);
 
   const handleDraw = () => {
     setPhase('flipping');
     setTimeout(() => {
-      const random = TAROT_CARDS[Math.floor(Math.random() * TAROT_CARDS.length)];
+      const random = cards[Math.floor(Math.random() * cards.length)];
       setPickedCard(random);
       setPhase('revealed');
     }, 1800);

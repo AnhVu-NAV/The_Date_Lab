@@ -1,508 +1,1113 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  User, Ticket, Lock, Shield, Camera, MapPin,
-  TrendingUp, Calendar, Users, DollarSign, Plus,
-  MoreHorizontal, Edit2, Trash2, Eye, Upload,
-  Bell, ChevronDown, CheckCircle, Clock, XCircle,
-  BarChart3, Settings, Search
+  User, Ticket, Camera, Shield, BarChart3, CalendarDays, Users,
+  CreditCard, Layers, Plus, Pencil, Trash2, Check, X, ChevronDown,
+  Upload, Star, LogOut, Bell, TrendingUp, Clock, CircleCheck, AlertCircle, MapPin,
+  LayoutDashboard, Landmark, ShoppingBag, Sparkles, Home, Lightbulb, CheckCircle2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../i18n';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
-interface DashboardViewProps {
-  isAuthenticated: boolean;
-  userRole: 'user' | 'admin';
+// ─── Shared Form Modal ───────────────────────────────────────────────────────
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+        onClick={e => e.stopPropagation()}
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+      >
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-[#f0ede6]">
+          <h3 className="font-display font-bold text-xl text-[#243d91]">{title}</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-[#f0ede6] flex items-center justify-center text-[#243d91]/60 hover:text-red-500 transition-all"><X size={15} /></button>
+        </div>
+        <div className="p-6">{children}</div>
+      </motion.div>
+    </div>
+  );
 }
 
-const MOCK_TICKETS = [
-  {
-    id: 'TKT-001', name: 'Workshop Làm Gốm Pastel', date: '15/07/2026', time: '14:00 - 16:30',
-    location: 'The Date Lab Studio, Q.1', qr: 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=TKT-001',
-    daysLeft: 27,
-  },
-];
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-xs font-bold uppercase tracking-widest text-[#243d91]/60 mb-1">{label}</label>
+      {children}
+    </div>
+  );
+}
 
-const ADMIN_EVENTS = [
-  { id: 1, name: 'Workshop Làm Gốm Pastel', date: '15/07', slots: '12/15', revenue: '5,880,000đ', status: 'active' },
-  { id: 2, name: 'Chế Tác Nước Hoa Cá Nhân', date: '16/07', slots: '18/20', revenue: '11,700,000đ', status: 'almost' },
-  { id: 3, name: 'Đổ Nến Thơm Nghệ Thuật', date: '18/07', slots: '20/20', revenue: '7,000,000đ', status: 'full' },
-  { id: 4, name: 'Baking: Bánh Kem Bento', date: '20/07', slots: '8/12', revenue: '3,200,000đ', status: 'active' },
-];
+const inputCls = "w-full px-4 py-2.5 rounded-xl border-2 border-[#f0ede6] text-sm font-semibold text-[#243d91] outline-none focus:border-[#e8539e] transition-all bg-[#f0ede6]/20";
 
-const ADMIN_USERS = [
-  { id: 1, name: 'Nguyễn Thị An', email: 'an@example.com', tickets: 3, joined: '01/2026', status: 'active' },
-  { id: 2, name: 'Trần Minh Khoa', email: 'khoa@example.com', tickets: 1, joined: '03/2026', status: 'active' },
-  { id: 3, name: 'Lê Thị Bình', email: 'binh@example.com', tickets: 5, joined: '12/2025', status: 'active' },
-  { id: 4, name: 'Phạm Quốc Hùng', email: 'hung@example.com', tickets: 2, joined: '04/2026', status: 'inactive' },
-];
+// ─── Admin: Overview ─────────────────────────────────────────────────────────
+function AdminOverview({ token }: { token: string }) {
+  const { lng } = useLanguage();
+  const [stats, setStats] = useState<any>(null);
 
-const ADMIN_STATS = [
-  { label: 'Tổng thành viên', value: '1,204', change: '+12%', icon: Users, color: 'from-[#4ecef5] to-[#243d91]' },
-  { label: 'Vé đã bán', value: '892', change: '+8%', icon: Ticket, color: 'from-[#e8539e] to-rose-600' },
-  { label: 'Sự kiện tháng', value: '45', change: '+3', icon: Calendar, color: 'from-amber-400 to-orange-500' },
-  { label: 'Doanh thu', value: '27.8M', change: '+15%', icon: TrendingUp, color: 'from-emerald-400 to-teal-600' },
-];
+  useEffect(() => {
+    api.getStats(token).then(setStats).catch(console.error);
+  }, [token]);
 
-export default function DashboardView({ isAuthenticated, userRole }: DashboardViewProps) {
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState(userRole === 'admin' ? 'overview' : 'tickets');
-  const [ticketTab, setTicketTab] = useState<'upcoming' | 'past'>('upcoming');
+  const fmt = (n: number) => n?.toLocaleString('vi-VN') + 'đ';
 
-  if (!isAuthenticated) {
-    return (
-      <div className="text-center py-24">
-        <div className="w-16 h-16 bg-[#e8539e]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <Lock size={24} className="text-[#e8539e]" />
+  const cards = stats ? [
+    { label: lng === 'vi' ? 'Tổng doanh thu' : 'Total Revenue', value: fmt(stats.totalRevenue), icon: <TrendingUp size={20} />, color: 'text-[#e8539e] bg-[#e8539e]/10' },
+    { label: lng === 'vi' ? 'Vé đã bán' : 'Tickets Sold', value: stats.paidTickets, icon: <Ticket size={20} />, color: 'text-[#4ecef5] bg-[#4ecef5]/10' },
+    { label: lng === 'vi' ? 'Chờ xác nhận' : 'Pending', value: stats.pendingPayments, icon: <Clock size={20} />, color: 'text-amber-500 bg-amber-50' },
+    { label: lng === 'vi' ? 'Người dùng' : 'Users', value: stats.totalUsers, icon: <Users size={20} />, color: 'text-[#243d91] bg-[#243d91]/10' },
+    { label: lng === 'vi' ? 'Sự kiện' : 'Events', value: stats.totalEvents, icon: <CalendarDays size={20} />, color: 'text-emerald-500 bg-emerald-50' },
+  ] : [];
+
+  const revenueData = stats?.revenueData?.length > 0 ? stats.revenueData : [{ name: 'Hôm nay', value: 0 }];
+  const ticketData = stats?.ticketData?.length > 0 ? stats.ticketData : [{ name: 'Chưa có', sold: 0 }];
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {!stats ? (
+          [...Array(5)].map((_, i) => <div key={i} className="h-28 bg-[#f0ede6] rounded-2xl animate-pulse" />)
+        ) : cards.map((c, i) => (
+          <div key={i} className="bg-white rounded-2xl p-5 border border-[#f0ede6] shadow-sm hover:shadow-md transition-shadow">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${c.color}`}>{c.icon}</div>
+            <p className="font-display font-bold text-xl text-[#243d91]">{c.value}</p>
+            <p className="text-xs text-[#243d91]/50 mt-0.5 font-bold uppercase tracking-wider">{c.label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-[#f0ede6] p-6 shadow-sm">
+          <h4 className="font-bold text-[#243d91] mb-6">{lng === 'vi' ? 'Biểu đồ doanh thu 7 ngày qua' : 'Revenue Last 7 Days'}</h4>
+          <div className="h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={revenueData}>
+                <defs>
+                  <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#e8539e" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#e8539e" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede6" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#243d91', fontSize: 12}} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#243d91', fontSize: 12}} tickFormatter={(val) => `${val/1000000}M`} dx={-10} />
+                <Tooltip contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)'}} formatter={(val: number) => [`${val.toLocaleString('vi-VN')}đ`, 'Doanh thu']} />
+                <Area type="monotone" dataKey="value" stroke="#e8539e" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-        <p className="font-bold text-[#243d91] mb-1">Bạn chưa đăng nhập</p>
-        <p className="text-sm text-[#243d91]/50 mb-6">Đăng nhập để xem tài khoản và vé của bạn</p>
-        <button onClick={() => navigate('/login')} className="bg-[#e8539e] text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-[#e8539e]/25">
-          Đăng nhập ngay
+
+        <div className="bg-white rounded-2xl border border-[#f0ede6] p-6 shadow-sm">
+          <h4 className="font-bold text-[#243d91] mb-6">{lng === 'vi' ? 'Vé bán theo loại sự kiện' : 'Tickets by Event Type'}</h4>
+          <div className="h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={ticketData} layout="vertical" margin={{top: 0, right: 0, left: 0, bottom: 0}}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0ede6" />
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: '#243d91', fontSize: 12, fontWeight: 'bold'}} width={70} />
+                <Tooltip cursor={{fill: 'transparent'}} contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)'}} formatter={(val: number) => [val, 'Vé']} />
+                <Bar dataKey="sold" fill="#4ecef5" radius={[0, 4, 4, 0]} barSize={24} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Admin: Events ────────────────────────────────────────────────────────────
+function AdminEvents({ token }: { token: string }) {
+  const { lng } = useLanguage();
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editEvent, setEditEvent] = useState<any>(null);
+  const [uploadingImg, setUploadingImg] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const emptyForm = { title: '', type: 'Gốm', date: '', time: '', location: '', locationType: 'Fixed', price: '', maxAttendees: '20', imageUrl: '', status: 'Available', description: '', forWho: 'Couple', addonIds: [] as string[] };
+  const [form, setForm] = useState(emptyForm);
+  const [addons, setAddons] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.getEvents().then(setEvents).finally(() => setLoading(false));
+    api.getAddons().then(setAddons).catch(console.error);
+  }, []);
+
+  const refresh = () => api.getEvents().then(setEvents);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImg(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const res = await api.uploadImage(reader.result as string, 'events', token);
+        setForm(f => ({ ...f, imageUrl: res.url }));
+      } catch { alert('Upload failed'); }
+      finally { setUploadingImg(false); }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = async () => {
+    try {
+      const data = { ...form, price: Number(form.price), maxAttendees: Number(form.maxAttendees), forWho: [form.forWho], schedule: [] };
+      if (editEvent) await api.updateEvent(editEvent.id, data, token);
+      else await api.createEvent(data, token);
+      setShowForm(false); setEditEvent(null); setForm(emptyForm);
+      refresh();
+    } catch (err: any) { alert(err.message); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm(lng === 'vi' ? 'Xóa sự kiện này?' : 'Delete this event?')) return;
+    await api.deleteEvent(id, token);
+    refresh();
+  };
+
+  const openEdit = (ev: any) => {
+    setEditEvent(ev);
+    setForm({ title: ev.title, type: ev.type || '', date: ev.date || '', time: ev.time || '', location: ev.location || '', locationType: ev.locationType || 'Fixed', price: String(ev.price || ''), maxAttendees: String(ev.maxAttendees || 20), imageUrl: ev.imageUrl || '', status: ev.status || 'Available', description: ev.description || '', forWho: (ev.forWho || ['Couple'])[0], addonIds: ev.addonIds || [] });
+    setShowForm(true);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="font-bold text-lg text-[#243d91]">{lng === 'vi' ? 'Quản lý sự kiện' : 'Manage Events'}</h3>
+        <button onClick={() => { setEditEvent(null); setForm(emptyForm); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2 bg-[#e8539e] text-white text-sm font-bold rounded-xl hover:bg-[#e8539e]/90 transition-all">
+          <Plus size={15} /> {lng === 'vi' ? 'Thêm sự kiện' : 'Add Event'}
         </button>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-[#f0ede6] overflow-hidden">
+        {loading ? <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-[#e8539e] border-t-transparent rounded-full animate-spin mx-auto" /></div> : (
+          <table className="w-full text-sm">
+            <thead className="bg-[#f0ede6]/60">
+              <tr>
+                {['Sự kiện', 'Loại', 'Ngày', 'Giá', 'Trạng thái', ''].map(h => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#243d91]/60">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {events.map(ev => (
+                <tr key={ev.id} className="border-t border-[#f0ede6] hover:bg-[#f0ede6]/30 transition-colors">
+                  <td className="px-4 py-3 font-semibold text-[#243d91]">
+                    <div className="flex items-center gap-2">
+                      {ev.imageUrl && <img src={ev.imageUrl} className="w-8 h-8 rounded-lg object-cover" alt="" />}
+                      {ev.title}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-[#243d91]/60">{ev.type}</td>
+                  <td className="px-4 py-3 text-[#243d91]/60">{ev.date}</td>
+                  <td className="px-4 py-3 font-bold text-[#e8539e]">{(ev.price || 0).toLocaleString('vi-VN')}đ</td>
+                  <td className="px-4 py-3">
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${ev.status === 'Available' ? 'bg-emerald-100 text-emerald-700' : ev.status === 'Almost Sold Out' ? 'bg-orange-100 text-orange-600' : 'bg-red-100 text-red-600'}`}>{ev.status}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1 justify-end">
+                      <button onClick={() => openEdit(ev)} className="w-8 h-8 rounded-lg bg-[#4ecef5]/10 text-[#4ecef5] hover:bg-[#4ecef5]/20 flex items-center justify-center transition-all"><Pencil size={14} /></button>
+                      <button onClick={() => handleDelete(ev.id)} className="w-8 h-8 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 flex items-center justify-center transition-all"><Trash2 size={14} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {showForm && (
+          <Modal title={editEvent ? (lng === 'vi' ? 'Sửa sự kiện' : 'Edit Event') : (lng === 'vi' ? 'Thêm sự kiện' : 'Add Event')} onClose={() => { setShowForm(false); setEditEvent(null); }}>
+            <div className="space-y-4">
+              <FormField label="Tên sự kiện">
+                <input className={inputCls} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Workshop Làm Gốm..." />
+              </FormField>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Loại">
+                  <select className={inputCls} value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
+                    {['Gốm', 'Nến', 'Nước hoa', 'Baking', 'Vẽ', 'Khác'].map(t => <option key={t}>{t}</option>)}
+                  </select>
+                </FormField>
+                <FormField label="Trạng thái">
+                  <select className={inputCls} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+                    {['Available', 'Almost Sold Out', 'Sold Out'].map(s => <option key={s}>{s}</option>)}
+                  </select>
+                </FormField>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Ngày"><input className={inputCls} value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} placeholder="15/07/2026" /></FormField>
+                <FormField label="Giờ"><input className={inputCls} value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} placeholder="14:00 - 17:00" /></FormField>
+              </div>
+              <FormField label="Địa điểm"><input className={inputCls} value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="TDL Studio..." /></FormField>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Giá vé (đ)"><input className={inputCls} type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} placeholder="350000" /></FormField>
+                <FormField label="Tối đa người"><input className={inputCls} type="number" value={form.maxAttendees} onChange={e => setForm(f => ({ ...f, maxAttendees: e.target.value }))} /></FormField>
+              </div>
+              <FormField label="Phù hợp với">
+                <select className={inputCls} value={form.forWho} onChange={e => setForm(f => ({ ...f, forWho: e.target.value }))}>
+                  {['Solo', 'Couple', 'Group', 'Family'].map(fw => <option key={fw}>{fw}</option>)}
+                </select>
+              </FormField>
+              <FormField label="Mô tả">
+                <textarea className={`${inputCls} resize-none`} rows={3} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+              </FormField>
+              <FormField label="Add-ons bán kèm (Tùy chọn)">
+                <div className="flex flex-col gap-2 p-3 border-2 border-[#f0ede6] rounded-xl bg-[#f0ede6]/10">
+                  {addons.length === 0 ? <p className="text-xs text-[#243d91]/50 italic">Chưa có Add-on nào trong hệ thống</p> : addons.map(a => (
+                    <label key={a.id} className="flex items-center gap-3 cursor-pointer">
+                      <div className={`w-5 h-5 rounded flex items-center justify-center transition-all ${form.addonIds.includes(a.id) ? 'bg-[#e8539e] text-white' : 'bg-white border-2 border-[#f0ede6]'}`}>
+                        {form.addonIds.includes(a.id) && <Check size={12} strokeWidth={4} />}
+                      </div>
+                      <span className="text-sm font-semibold text-[#243d91]">{a.name} <span className="text-[#e8539e]">{(a.price || 0).toLocaleString()}đ</span></span>
+                      <input 
+                        type="checkbox" className="hidden" 
+                        checked={form.addonIds.includes(a.id)}
+                        onChange={(e) => {
+                          const next = new Set(form.addonIds);
+                          if (e.target.checked) next.add(a.id); else next.delete(a.id);
+                          setForm(f => ({ ...f, addonIds: Array.from(next) }));
+                        }}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </FormField>
+              <FormField label="Ảnh sự kiện">
+                <div className="space-y-2">
+                  {form.imageUrl && <img src={form.imageUrl} className="w-full h-32 object-cover rounded-xl" alt="preview" />}
+                  <button type="button" onClick={() => fileRef.current?.click()} disabled={uploadingImg} className="w-full py-2.5 rounded-xl border-2 border-dashed border-[#f0ede6] text-sm font-bold text-[#243d91]/60 hover:border-[#e8539e]/30 transition-all flex items-center justify-center gap-2">
+                    {uploadingImg ? <div className="w-4 h-4 border-2 border-[#e8539e] border-t-transparent rounded-full animate-spin" /> : <Upload size={14} />}
+                    {uploadingImg ? 'Uploading...' : 'Upload ảnh'}
+                  </button>
+                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                  <input className={inputCls} value={form.imageUrl} onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))} placeholder="hoặc nhập URL ảnh" />
+                </div>
+              </FormField>
+              <button onClick={handleSave} className="w-full py-3 bg-[#e8539e] text-white font-bold rounded-xl hover:bg-[#e8539e]/90 transition-all">
+                {editEvent ? (lng === 'vi' ? 'Lưu thay đổi' : 'Save Changes') : (lng === 'vi' ? 'Tạo sự kiện' : 'Create Event')}
+              </button>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── Admin: Tickets ───────────────────────────────────────────────────────────
+function AdminTickets({ token }: { token: string }) {
+  const { lng } = useLanguage();
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getTickets(token).then(setTickets).finally(() => setLoading(false));
+  }, [token]);
+
+  const confirmPayment = async (id: string) => {
+    await api.updateTicket(id, { paymentStatus: 'paid' }, token);
+    setTickets(prev => prev.map(t => t.id === id ? { ...t, paymentStatus: 'paid' } : t));
+  };
+
+  const pendingTickets = tickets.filter(t => t.paymentStatus === 'pending');
+  const paidTickets = tickets.filter(t => t.paymentStatus === 'paid');
+
+  return (
+    <div className="space-y-6">
+      <h3 className="font-bold text-lg text-[#243d91]">{lng === 'vi' ? 'Quản lý vé & Thanh toán' : 'Tickets & Payments'}</h3>
+
+      {/* Pending */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Clock size={16} className="text-amber-500" />
+          <h4 className="font-bold text-sm text-[#243d91]">{lng === 'vi' ? 'Chờ xác nhận' : 'Pending Payment'} ({pendingTickets.length})</h4>
+        </div>
+        <div className="bg-white rounded-2xl border border-[#f0ede6] overflow-hidden">
+          {loading ? <div className="p-8 text-center"><div className="w-5 h-5 border-2 border-[#e8539e] border-t-transparent rounded-full animate-spin mx-auto" /></div> : pendingTickets.length === 0 ? (
+            <p className="text-center text-[#243d91]/40 text-sm py-6">{lng === 'vi' ? 'Không có vé chờ xác nhận' : 'No pending tickets'}</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-amber-50"><tr>
+                {['Sự kiện', 'Người đặt', 'Số lượng', 'Tổng tiền', 'Mã CK', ''].map(h => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-bold uppercase tracking-widest text-amber-600/70">{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>
+                {pendingTickets.map(tk => (
+                  <tr key={tk.id} className="border-t border-[#f0ede6] hover:bg-amber-50/30">
+                    <td className="px-4 py-3 font-semibold text-[#243d91]">{tk.eventTitle}</td>
+                    <td className="px-4 py-3 text-[#243d91]/60 text-xs">{tk.userId?.slice(0, 8)}...</td>
+                    <td className="px-4 py-3 font-bold text-center">{tk.quantity}</td>
+                    <td className="px-4 py-3 font-bold text-[#e8539e]">{(tk.totalPrice || 0).toLocaleString('vi-VN')}đ</td>
+                    <td className="px-4 py-3 font-mono text-xs font-bold text-[#243d91]">{tk.paymentRef}</td>
+                    <td className="px-4 py-3">
+                      <button onClick={() => confirmPayment(tk.id)} className="flex items-center gap-1 px-3 py-1.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg hover:bg-emerald-200 transition-all">
+                        <CircleCheck size={12} /> {lng === 'vi' ? 'Xác nhận' : 'Confirm'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* Paid */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <CircleCheck size={16} className="text-emerald-500" />
+          <h4 className="font-bold text-sm text-[#243d91]">{lng === 'vi' ? 'Đã xác nhận' : 'Paid'} ({paidTickets.length})</h4>
+        </div>
+        <div className="bg-white rounded-2xl border border-[#f0ede6] overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-emerald-50"><tr>
+              {['Sự kiện', 'Mã CK', 'Số lượng', 'Tổng tiền', 'Ngày đặt'].map(h => (
+                <th key={h} className="text-left px-4 py-3 text-xs font-bold uppercase tracking-widest text-emerald-700/60">{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {paidTickets.map(tk => (
+                <tr key={tk.id} className="border-t border-[#f0ede6] hover:bg-emerald-50/20">
+                  <td className="px-4 py-3 font-semibold text-[#243d91]">{tk.eventTitle}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{tk.paymentRef}</td>
+                  <td className="px-4 py-3 font-bold text-center">{tk.quantity}</td>
+                  <td className="px-4 py-3 font-bold text-[#e8539e]">{(tk.totalPrice || 0).toLocaleString('vi-VN')}đ</td>
+                  <td className="px-4 py-3 text-xs text-[#243d91]/50">{tk.createdAt ? new Date(tk.createdAt).toLocaleDateString('vi-VN') : ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Admin: Tarot Cards ───────────────────────────────────────────────────────
+function AdminTarot({ token }: { token: string }) {
+  const { lng } = useLanguage();
+  const [cards, setCards] = useState<any[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [editCard, setEditCard] = useState<any>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const emptyForm = { name: '', nameVi: '', symbol: '✦', colorClass: 'from-[#243d91] to-[#4ecef5]', imageUrl: '', messageVi: '', messageEn: '', vibeVi: '', vibeEn: '', eventSuggestionVi: '', eventSuggestionEn: '', eventDescVi: '', eventDescEn: '' };
+  const [form, setForm] = useState(emptyForm);
+
+  const refresh = () => api.getTarotCards().then(setCards);
+  useEffect(() => { refresh(); }, []);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const res = await api.uploadImage(reader.result as string, 'tarot', token);
+        setForm(f => ({ ...f, imageUrl: res.url }));
+      } catch { alert('Upload failed'); }
+      finally { setUploading(false); }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = async () => {
+    try {
+      if (editCard) await api.updateTarotCard(editCard.id, form, token);
+      else await api.createTarotCard(form, token);
+      setShowForm(false); setEditCard(null); setForm(emptyForm);
+      refresh();
+    } catch (err: any) { alert(err.message); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Xóa lá bài này?')) return;
+    await api.deleteTarotCard(id, token);
+    refresh();
+  };
+
+  const COLOR_OPTIONS = [
+    'from-[#243d91] to-[#4ecef5]', 'from-purple-900 to-[#243d91]', 'from-amber-400 to-[#e8539e]',
+    'from-[#4ecef5] to-emerald-500', 'from-[#e8539e] to-rose-600', 'from-slate-700 to-[#243d91]',
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="font-bold text-lg text-[#243d91]">{lng === 'vi' ? 'Quản lý lá bài Tarot' : 'Manage Tarot Cards'}</h3>
+        <button onClick={() => { setEditCard(null); setForm(emptyForm); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2 bg-[#243d91] text-white text-sm font-bold rounded-xl hover:bg-[#243d91]/90 transition-all">
+          <Plus size={15} /> {lng === 'vi' ? 'Thêm lá bài' : 'Add Card'}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {cards.map(card => (
+          <div key={card.id} className="bg-white rounded-2xl border border-[#f0ede6] overflow-hidden hover:shadow-md transition-all">
+            <div className={`h-28 bg-gradient-to-br ${card.colorClass || 'from-[#243d91] to-[#4ecef5]'} flex items-center justify-center relative`}>
+              {card.imageUrl ? <img src={card.imageUrl} alt="" className="h-full w-full object-cover absolute inset-0" /> : <span className="text-4xl text-white/80 relative">{card.symbol}</span>}
+            </div>
+            <div className="p-3">
+              <p className="font-bold text-[#243d91] text-sm">{card.nameVi || card.name}</p>
+              <p className="text-xs text-[#243d91]/50">{card.name}</p>
+              <div className="flex gap-1 mt-2">
+                <button onClick={() => { setEditCard(card); setForm({ ...emptyForm, ...card }); setShowForm(true); }} className="flex-1 py-1.5 rounded-lg bg-[#4ecef5]/10 text-[#4ecef5] text-xs font-bold hover:bg-[#4ecef5]/20 transition-all flex items-center justify-center gap-1">
+                  <Pencil size={11} /> {lng === 'vi' ? 'Sửa' : 'Edit'}
+                </button>
+                <button onClick={() => handleDelete(card.id)} className="w-8 h-8 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 flex items-center justify-center transition-all">
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <AnimatePresence>
+        {showForm && (
+          <Modal title={editCard ? 'Sửa lá bài' : 'Thêm lá bài'} onClose={() => { setShowForm(false); setEditCard(null); }}>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Tên (EN)"><input className={inputCls} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="The Star" /></FormField>
+                <FormField label="Tên (VI)"><input className={inputCls} value={form.nameVi} onChange={e => setForm(f => ({ ...f, nameVi: e.target.value }))} placeholder="Ngôi Sao" /></FormField>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Ký hiệu"><input className={inputCls} value={form.symbol} onChange={e => setForm(f => ({ ...f, symbol: e.target.value }))} placeholder="✦" /></FormField>
+                <FormField label="Màu gradient">
+                  <div className="flex gap-1 flex-wrap">
+                    {COLOR_OPTIONS.map(c => (
+                      <button key={c} type="button" onClick={() => setForm(f => ({ ...f, colorClass: c }))} className={`w-8 h-8 rounded-lg bg-gradient-to-br ${c} border-2 transition-all ${form.colorClass === c ? 'border-[#243d91] scale-110' : 'border-transparent'}`} />
+                    ))}
+                  </div>
+                </FormField>
+              </div>
+              <FormField label="Ảnh lá bài (Cloudinary)">
+                {form.imageUrl && <img src={form.imageUrl} alt="" className="w-full h-28 object-cover rounded-xl mb-2" />}
+                <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="w-full py-2.5 rounded-xl border-2 border-dashed border-[#f0ede6] text-sm font-bold text-[#243d91]/60 hover:border-[#e8539e]/30 transition-all flex items-center justify-center gap-2">
+                  {uploading ? <div className="w-4 h-4 border-2 border-[#e8539e] border-t-transparent rounded-full animate-spin" /> : <Upload size={14} />}
+                  {uploading ? 'Uploading...' : 'Upload ảnh lá bài'}
+                </button>
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+              </FormField>
+              <div className="grid grid-cols-1 gap-3">
+                <FormField label="Thông điệp (VI)"><textarea className={`${inputCls} resize-none`} rows={2} value={form.messageVi} onChange={e => setForm(f => ({ ...f, messageVi: e.target.value }))} /></FormField>
+                <FormField label="Thông điệp (EN)"><textarea className={`${inputCls} resize-none`} rows={2} value={form.messageEn} onChange={e => setForm(f => ({ ...f, messageEn: e.target.value }))} /></FormField>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Vibe (VI)"><input className={inputCls} value={form.vibeVi} onChange={e => setForm(f => ({ ...f, vibeVi: e.target.value }))} /></FormField>
+                <FormField label="Vibe (EN)"><input className={inputCls} value={form.vibeEn} onChange={e => setForm(f => ({ ...f, vibeEn: e.target.value }))} /></FormField>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Gợi ý sự kiện (VI)"><input className={inputCls} value={form.eventSuggestionVi} onChange={e => setForm(f => ({ ...f, eventSuggestionVi: e.target.value }))} /></FormField>
+                <FormField label="Gợi ý sự kiện (EN)"><input className={inputCls} value={form.eventSuggestionEn} onChange={e => setForm(f => ({ ...f, eventSuggestionEn: e.target.value }))} /></FormField>
+              </div>
+              <button onClick={handleSave} className="w-full py-3 bg-[#243d91] text-white font-bold rounded-xl hover:bg-[#243d91]/90 transition-all">
+                {editCard ? 'Lưu thay đổi' : 'Tạo lá bài'}
+              </button>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── Admin: Bank Accounts ────────────────────────────────────────────────────
+function AdminBank({ token }: { token: string }) {
+  const { lng } = useLanguage();
+  const [banks, setBanks] = useState<any[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [editBank, setEditBank] = useState<any>(null);
+  const [form, setForm] = useState({ bankName: '', bankCode: '', accountNumber: '', accountName: '' });
+
+  const refresh = () => api.getBanks(token).then(setBanks);
+  useEffect(() => { refresh(); }, [token]);
+
+  const handleSave = async () => {
+    try {
+      if (editBank) await api.updateBank(editBank.id, form, token);
+      else await api.createBank(form, token);
+      setShowForm(false); setEditBank(null);
+      setForm({ bankName: '', bankCode: '', accountNumber: '', accountName: '' });
+      refresh();
+    } catch (err: any) { alert(err.message); }
+  };
+
+  const handleActivate = async (id: string) => {
+    await api.activateBank(id, token);
+    refresh();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm(lng === 'vi' ? 'Xóa tài khoản này?' : 'Delete this account?')) return;
+    await api.deleteBank(id, token);
+    refresh();
+  };
+
+  const BANK_CODES = ['MB', 'VCB', 'TCB', 'ACB', 'BIDV', 'VTB', 'TPB', 'OCB', 'VPB', 'SHB'];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="font-bold text-lg text-[#243d91]">
+          {lng === 'vi' ? 'Tài khoản ngân hàng nhận tiền' : 'Payment Bank Accounts'}
+        </h3>
+        <button onClick={() => { setEditBank(null); setForm({ bankName: '', bankCode: '', accountNumber: '', accountName: '' }); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2 bg-[#243d91] text-white text-sm font-bold rounded-xl hover:bg-[#243d91]/90 transition-all">
+          <Plus size={15} /> {lng === 'vi' ? 'Thêm tài khoản' : 'Add Account'}
+        </button>
+      </div>
+
+      <p className="text-xs text-[#243d91]/50 bg-[#4ecef5]/10 px-4 py-2 rounded-xl">
+        <Lightbulb size={16} className="inline-block shrink-0 mr-1" /> {lng === 'vi' ? 'Tài khoản đang Active sẽ được dùng để tạo QR thanh toán tự động.' : 'The Active account is used for automatic QR payment generation.'}
+      </p>
+
+      <div className="space-y-3">
+        {banks.map(bank => (
+          <div key={bank.id} className={`bg-white rounded-2xl border-2 p-4 flex items-center justify-between transition-all ${bank.isActive ? 'border-emerald-300 shadow-md shadow-emerald-100' : 'border-[#f0ede6]'}`}>
+            <div className="flex items-center gap-4">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold ${bank.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-[#f0ede6] text-[#243d91]/60'}`}>
+                {bank.bankCode}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-[#243d91]">{bank.bankName}</p>
+                  {bank.isActive && <span className="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full flex items-center gap-1"><Check size={10} /> Active</span>}
+                </div>
+                <p className="text-sm text-[#243d91]/60 font-mono">{bank.accountNumber}</p>
+                <p className="text-xs text-[#243d91]/40">{bank.accountName}</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              {!bank.isActive && (
+                <button onClick={() => handleActivate(bank.id)} className="px-3 py-1.5 text-xs font-bold bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-all">
+                  {lng === 'vi' ? 'Đặt Active' : 'Set Active'}
+                </button>
+              )}
+              <button onClick={() => { setEditBank(bank); setForm({ bankName: bank.bankName, bankCode: bank.bankCode, accountNumber: bank.accountNumber, accountName: bank.accountName }); setShowForm(true); }} className="w-8 h-8 rounded-lg bg-[#4ecef5]/10 text-[#4ecef5] hover:bg-[#4ecef5]/20 flex items-center justify-center transition-all">
+                <Pencil size={13} />
+              </button>
+              <button onClick={() => handleDelete(bank.id)} className="w-8 h-8 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 flex items-center justify-center transition-all">
+                <Trash2 size={13} />
+              </button>
+            </div>
+          </div>
+        ))}
+        {banks.length === 0 && (
+          <div className="text-center py-12 text-[#243d91]/40 text-sm">
+            {lng === 'vi' ? 'Chưa có tài khoản nào. Thêm tài khoản ngân hàng để nhận thanh toán QR.' : 'No accounts yet. Add a bank account to enable QR payments.'}
+          </div>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {showForm && (
+          <Modal title={editBank ? 'Sửa tài khoản' : 'Thêm tài khoản ngân hàng'} onClose={() => { setShowForm(false); setEditBank(null); }}>
+            <div className="space-y-4">
+              <FormField label="Tên ngân hàng">
+                <input className={inputCls} value={form.bankName} onChange={e => setForm(f => ({ ...f, bankName: e.target.value }))} placeholder="MB Bank" />
+              </FormField>
+              <FormField label="Mã ngân hàng (VietQR)">
+                <select className={inputCls} value={form.bankCode} onChange={e => setForm(f => ({ ...f, bankCode: e.target.value }))}>
+                  <option value="">-- Chọn ngân hàng --</option>
+                  {BANK_CODES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </FormField>
+              <FormField label="Số tài khoản">
+                <input className={inputCls} value={form.accountNumber} onChange={e => setForm(f => ({ ...f, accountNumber: e.target.value }))} placeholder="0123456789" />
+              </FormField>
+              <FormField label="Tên chủ tài khoản (IN HOA)">
+                <input className={inputCls} value={form.accountName} onChange={e => setForm(f => ({ ...f, accountName: e.target.value.toUpperCase() }))} placeholder="THE DATE LAB" />
+              </FormField>
+              <button onClick={handleSave} className="w-full py-3 bg-[#243d91] text-white font-bold rounded-xl hover:bg-[#243d91]/90 transition-all">
+                {editBank ? 'Lưu thay đổi' : 'Thêm tài khoản'}
+              </button>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── Admin: Users ────────────────────────────────────────────────────────────
+function AdminUsers({ token }: { token: string }) {
+  const { lng } = useLanguage();
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getUsers(token).then(setUsers).finally(() => setLoading(false));
+  }, [token]);
+
+  const toggleRole = async (userId: string, currentRole: string) => {
+    const newRole = currentRole === 'admin' ? 'user' : 'admin';
+    await api.updateUserRole(userId, newRole, token);
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+  };
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-bold text-lg text-[#243d91]">{lng === 'vi' ? 'Quản lý người dùng' : 'User Management'}</h3>
+      <div className="bg-white rounded-2xl border border-[#f0ede6] overflow-hidden">
+        {loading ? <div className="p-8 text-center"><div className="w-5 h-5 border-2 border-[#e8539e] border-t-transparent rounded-full animate-spin mx-auto" /></div> : (
+          <table className="w-full text-sm">
+            <thead className="bg-[#f0ede6]/60"><tr>
+              {['Tên', 'Email', 'Điện thoại', 'Role', 'Ngày tạo', ''].map(h => (
+                <th key={h} className="text-left px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#243d91]/60">{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {users.map(u => (
+                <tr key={u.id} className="border-t border-[#f0ede6] hover:bg-[#f0ede6]/30">
+                  <td className="px-4 py-3 font-semibold text-[#243d91]">{u.name}</td>
+                  <td className="px-4 py-3 text-[#243d91]/60 text-xs">{u.email}</td>
+                  <td className="px-4 py-3 text-[#243d91]/60">{u.phone || '—'}</td>
+                  <td className="px-4 py-3">
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${u.role === 'admin' ? 'bg-[#e8539e]/10 text-[#e8539e]' : 'bg-[#4ecef5]/10 text-[#4ecef5]'}`}>
+                      {u.role}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-[#243d91]/40">{u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : ''}</td>
+                  <td className="px-4 py-3">
+                    <button onClick={() => toggleRole(u.id, u.role)} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-[#f0ede6] text-[#243d91]/60 hover:bg-[#243d91]/10 hover:text-[#243d91] transition-all">
+                      {u.role === 'admin' ? (lng === 'vi' ? '→ User' : '→ User') : (lng === 'vi' ? '→ Admin' : '→ Admin')}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── User: My Tickets ────────────────────────────────────────────────────────
+import { QRCodeSVG } from 'qrcode.react';
+
+function UserTickets({ token }: { token: string }) {
+  const { lng } = useLanguage();
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getTickets(token).then(setTickets).finally(() => setLoading(false));
+  }, [token]);
+
+  if (loading) return <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-[#e8539e] border-t-transparent rounded-full animate-spin" /></div>;
+  if (tickets.length === 0) return (
+    <div className="text-center py-16 bg-white rounded-3xl border border-[#f0ede6]">
+      <Ticket size={48} className="text-[#243d91]/20 mx-auto mb-4" />
+      <p className="text-[#243d91]/50 font-bold">{lng === 'vi' ? 'Bạn chưa có vé nào' : 'No tickets yet'}</p>
+      <button className="mt-4 px-6 py-2 bg-[#243d91] text-white font-bold rounded-xl hover:bg-[#243d91]/90 transition-all">Khám phá sự kiện</button>
+    </div>
+  );
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {tickets.map(tk => {
+        const isPaid = tk.paymentStatus === 'paid';
+        return (
+          <div key={tk.id} className="bg-white rounded-3xl border border-[#f0ede6] overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-all group">
+            <div className="h-32 bg-gray-100 relative">
+              {tk.eventImageUrl ? <img src={tk.eventImageUrl} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-[#243d91]/10" />}
+              <div className="absolute top-3 right-3">
+                <span className={`text-xs font-bold px-3 py-1.5 rounded-full shadow-sm backdrop-blur-md ${isPaid ? 'bg-emerald-500/90 text-white' : 'bg-amber-500/90 text-white'}`}>
+                  {isPaid ? <span className="flex items-center gap-1"><CheckCircle2 size={12}/> {lng === 'vi' ? 'Đã xác nhận' : 'Confirmed'}</span> : <span className="flex items-center gap-1"><Clock size={12}/> {lng === 'vi' ? 'Chờ xác nhận' : 'Pending'}</span>}
+                </span>
+              </div>
+            </div>
+            
+            <div className="p-5 flex-1 border-b border-dashed border-[#f0ede6] relative">
+              <div className="absolute -bottom-3 -left-3 w-6 h-6 rounded-full bg-[#faf9f7]" />
+              <div className="absolute -bottom-3 -right-3 w-6 h-6 rounded-full bg-[#faf9f7]" />
+              
+              <h4 className="font-display font-bold text-lg text-[#243d91] mb-1 group-hover:text-[#e8539e] transition-colors line-clamp-1">{tk.eventTitle}</h4>
+              <p className="text-sm text-[#243d91]/60 flex items-center gap-1.5"><CalendarDays size={14} /> {tk.eventDate}</p>
+              <p className="text-sm text-[#243d91]/60 flex items-center gap-1.5 mt-1"><MapPin size={14} /> {tk.eventLocation}</p>
+              
+              <div className="mt-4 pt-4 border-t border-[#f0ede6] flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold tracking-widest text-[#243d91]/40 uppercase">Số lượng</p>
+                  <p className="font-bold text-[#243d91]">{tk.quantity} vé</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-bold tracking-widest text-[#243d91]/40 uppercase">Tổng tiền</p>
+                  <p className="font-display font-bold text-[#e8539e]">{(tk.totalPrice || 0).toLocaleString('vi-VN')}đ</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 bg-[#f0ede6]/30 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-[#243d91]/60 font-mono mb-1">ID: {tk.id.split('-')[0].toUpperCase()}</p>
+                {isPaid && <p className="text-xs font-bold text-emerald-600 flex items-center gap-1"><Check size={12}/> Sẵn sàng check-in</p>}
+              </div>
+              {isPaid ? (
+                <div className="bg-white p-1.5 rounded-xl shadow-sm border border-[#f0ede6]">
+                  <QRCodeSVG value={tk.id} size={50} fgColor="#243d91" />
+                </div>
+              ) : (
+                <div className="w-[50px] h-[50px] bg-white rounded-xl border border-[#f0ede6] flex items-center justify-center text-amber-500 opacity-50">
+                  <Clock size={20} />
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── User: Profile ───────────────────────────────────────────────────────────
+function UserProfile({ token }: { token: string }) {
+  const { lng } = useLanguage();
+  const { user, updateUser } = useAuth();
+  const [form, setForm] = useState({ name: user?.name || '', phone: user?.phone || '', bio: user?.bio || '', dob: user?.dob || '' });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = async () => {
+    if (!token) return;
+    setSaving(true);
+    try {
+      const updated = await api.updateProfile(form, token);
+      updateUser(updated);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err: any) { alert(err.message); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="md:col-span-1">
+        <div className="bg-white rounded-3xl border border-[#f0ede6] p-6 text-center shadow-sm">
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#243d91] to-[#e8539e] mx-auto mb-4 flex items-center justify-center text-white text-3xl font-display font-bold shadow-md">
+            {user?.name?.[0]?.toUpperCase() || 'U'}
+          </div>
+          <h3 className="font-display font-bold text-xl text-[#243d91]">{user?.name}</h3>
+          <p className="text-sm text-[#243d91]/60 mb-4">{user?.email}</p>
+          <div className="flex items-center justify-center gap-2 text-xs font-bold bg-[#f0ede6]/50 py-2 rounded-xl text-[#243d91]">
+            <Star size={14} className="text-amber-500" />
+            {lng === 'vi' ? 'Thành viên TDL' : 'TDL Member'}
+          </div>
+        </div>
+      </div>
+      
+      <div className="md:col-span-2">
+        <div className="bg-white rounded-3xl border border-[#f0ede6] p-6 lg:p-8 shadow-sm">
+          <h3 className="font-bold text-xl text-[#243d91] mb-6 flex items-center gap-2"><User size={20}/> {lng === 'vi' ? 'Cập nhật hồ sơ' : 'Update Profile'}</h3>
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <FormField label={lng === 'vi' ? 'Họ và tên' : 'Full name'}>
+                <input className={inputCls} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+              </FormField>
+              <FormField label={lng === 'vi' ? 'Số điện thoại' : 'Phone'}>
+                <input className={inputCls} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+              </FormField>
+            </div>
+            <FormField label={lng === 'vi' ? 'Ngày sinh' : 'Date of birth'}>
+              <input className={inputCls} type="date" value={form.dob} onChange={e => setForm(f => ({ ...f, dob: e.target.value }))} />
+            </FormField>
+            <FormField label="Bio (Sở thích/Tính cách)">
+              <textarea className={`${inputCls} resize-none`} rows={4} placeholder={lng === 'vi' ? "Ví dụ: Thích nến thơm, làm gốm, nghe nhạc Indie..." : "E.g: Love candles, pottery, indie music..."} value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} />
+            </FormField>
+            <div className="pt-2">
+              <button onClick={handleSave} disabled={saving} className="w-full md:w-auto md:min-w-[200px] py-3.5 bg-[#e8539e] text-white font-bold rounded-xl hover:bg-[#e8539e]/90 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-md shadow-[#e8539e]/20">
+                {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : saved ? <Check size={16} /> : null}
+                {saved ? (lng === 'vi' ? 'Đã lưu!' : 'Saved!') : (lng === 'vi' ? 'Lưu thay đổi' : 'Save Changes')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Admin: Add-ons ────────────────────────────────────────────────────────────
+function AdminAddons({ token }: { token: string }) {
+  const { lng } = useLanguage();
+  const [addons, setAddons] = useState<any[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [editAddon, setEditAddon] = useState<any>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const emptyForm = { name: '', nameEn: '', description: '', descriptionEn: '', price: '', imageUrl: '', isActive: true };
+  const [form, setForm] = useState(emptyForm);
+
+  const refresh = () => api.getAddons().then(setAddons);
+  useEffect(() => { refresh(); }, []);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const res = await api.uploadImage(reader.result as string, 'addons', token);
+        setForm(f => ({ ...f, imageUrl: res.url }));
+      } catch { alert('Upload failed'); }
+      finally { setUploading(false); }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = async () => {
+    try {
+      if (editAddon) await api.updateAddon(editAddon.id, form, token);
+      else await api.createAddon(form, token);
+      setShowForm(false); setEditAddon(null); setForm(emptyForm);
+      refresh();
+    } catch (err: any) { alert(err.message); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Xóa Add-on này?')) return;
+    await api.deleteAddon(id, token);
+    refresh();
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="font-bold text-lg text-[#243d91]">{lng === 'vi' ? 'Quản lý Add-ons' : 'Manage Add-ons'}</h3>
+        <button onClick={() => { setEditAddon(null); setForm(emptyForm); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2 bg-[#243d91] text-white text-sm font-bold rounded-xl hover:bg-[#243d91]/90 transition-all">
+          <Plus size={15} /> {lng === 'vi' ? 'Thêm Add-on' : 'Add Item'}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {addons.map(item => (
+          <div key={item.id} className={`bg-white rounded-2xl border ${item.isActive ? 'border-emerald-300 shadow-sm' : 'border-[#f0ede6] opacity-60'} overflow-hidden transition-all`}>
+            <div className="h-32 bg-[#f0ede6] flex items-center justify-center relative">
+              {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-cover absolute inset-0" /> : <ShoppingBag size={32} className="text-[#243d91]/20 relative" />}
+              {!item.isActive && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><span className="text-white font-bold text-xs bg-black/60 px-2 py-1 rounded-full">Ngừng bán</span></div>}
+            </div>
+            <div className="p-3">
+              <p className="font-bold text-[#243d91] text-sm truncate">{item.name}</p>
+              <p className="font-bold text-[#e8539e] text-sm mt-1">{(item.price || 0).toLocaleString('vi-VN')}đ</p>
+              <div className="flex gap-1 mt-3">
+                <button onClick={() => { setEditAddon(item); setForm({ ...emptyForm, ...item }); setShowForm(true); }} className="flex-1 py-1.5 rounded-lg bg-[#4ecef5]/10 text-[#4ecef5] text-xs font-bold hover:bg-[#4ecef5]/20 transition-all flex items-center justify-center gap-1">
+                  <Pencil size={11} /> {lng === 'vi' ? 'Sửa' : 'Edit'}
+                </button>
+                <button onClick={() => handleDelete(item.id)} className="w-8 h-8 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 flex items-center justify-center transition-all">
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <AnimatePresence>
+        {showForm && (
+          <Modal title={editAddon ? 'Sửa Add-on' : 'Thêm Add-on'} onClose={() => { setShowForm(false); setEditAddon(null); }}>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Tên (VI)"><input className={inputCls} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="In ảnh Instax" /></FormField>
+                <FormField label="Tên (EN)"><input className={inputCls} value={form.nameEn} onChange={e => setForm(f => ({ ...f, nameEn: e.target.value }))} placeholder="Instax Photo" /></FormField>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Giá bán (đ)"><input type="number" className={inputCls} value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} placeholder="50000" /></FormField>
+                <FormField label="Trạng thái">
+                  <select className={inputCls} value={form.isActive ? '1' : '0'} onChange={e => setForm(f => ({ ...f, isActive: e.target.value === '1' }))}>
+                    <option value="1">Đang bán</option>
+                    <option value="0">Ngừng bán</option>
+                  </select>
+                </FormField>
+              </div>
+              <FormField label="Ảnh minh họa">
+                {form.imageUrl && <img src={form.imageUrl} alt="" className="w-full h-28 object-cover rounded-xl mb-2" />}
+                <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="w-full py-2.5 rounded-xl border-2 border-dashed border-[#f0ede6] text-sm font-bold text-[#243d91]/60 hover:border-[#e8539e]/30 transition-all flex items-center justify-center gap-2">
+                  {uploading ? <div className="w-4 h-4 border-2 border-[#e8539e] border-t-transparent rounded-full animate-spin" /> : <Upload size={14} />}
+                  {uploading ? 'Uploading...' : 'Upload ảnh'}
+                </button>
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+              </FormField>
+              <div className="grid grid-cols-1 gap-3">
+                <FormField label="Mô tả (VI)"><textarea className={`${inputCls} resize-none`} rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></FormField>
+                <FormField label="Mô tả (EN)"><textarea className={`${inputCls} resize-none`} rows={2} value={form.descriptionEn} onChange={e => setForm(f => ({ ...f, descriptionEn: e.target.value }))} /></FormField>
+              </div>
+              <button onClick={handleSave} className="w-full py-3 bg-[#243d91] text-white font-bold rounded-xl hover:bg-[#243d91]/90 transition-all">
+                {editAddon ? 'Lưu thay đổi' : 'Tạo Add-on'}
+              </button>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── MAIN DASHBOARD ──────────────────────────────────────────────────────────
+export default function DashboardView() {
+  const { lng } = useLanguage();
+  const { user, token, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const isAdmin = user?.role === 'admin';
+
+  const userTabs = [
+    { id: 'tickets', label: lng === 'vi' ? '🎟 Vé của tôi' : '🎟 My Tickets' },
+    { id: 'profile', label: lng === 'vi' ? '👤 Hồ sơ' : '👤 Profile' },
+  ];
+
+  const adminTabs = [
+    { id: 'overview', label: lng === 'vi' ? 'Tổng quan' : 'Overview', icon: <LayoutDashboard size={18} /> },
+    { id: 'events', label: lng === 'vi' ? 'Sự kiện' : 'Events', icon: <CalendarDays size={18} /> },
+    { id: 'tickets', label: lng === 'vi' ? 'Vé & Thanh toán' : 'Tickets & Pay', icon: <Ticket size={18} /> },
+    { id: 'tarot', label: 'Tarot', icon: <Sparkles size={18} /> },
+    { id: 'bank', label: lng === 'vi' ? 'Ngân hàng' : 'Bank', icon: <Landmark size={18} /> },
+    { id: 'addons', label: lng === 'vi' ? 'Add-ons' : 'Add-ons', icon: <ShoppingBag size={18} /> },
+    { id: 'users', label: lng === 'vi' ? 'Người dùng' : 'Users', icon: <Users size={18} /> },
+  ];
+
+  const tabs = isAdmin ? adminTabs : userTabs;
+  const [activeTab, setActiveTab] = useState(tabs[0].id);
+
+  if (!user || !token) {
+    navigate('/login');
+    return null;
+  }
+
+  // Standalone Layout for Admin
+  if (isAdmin) {
+    return (
+      <div className="flex h-screen w-full bg-[#f0ede6] overflow-hidden">
+        {/* SIDEBAR */}
+        <div className="w-64 bg-[#243d91] text-white flex flex-col shrink-0">
+          <div className="p-6">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-display font-bold text-xl text-[#e8539e]">
+                TDL
+              </div>
+              <div>
+                <h1 className="font-display font-bold text-lg leading-tight">Admin<br/><span className="text-[#4ecef5]">Panel</span></h1>
+              </div>
+            </div>
+            
+            <div className="space-y-1">
+              {adminTabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                    activeTab === tab.id
+                      ? 'bg-[#e8539e] text-white shadow-lg shadow-[#e8539e]/20'
+                      : 'text-white/60 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  {tab.icon} {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          <div className="mt-auto p-6 border-t border-white/10">
+            <button onClick={() => navigate('/')} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-white/60 hover:text-white hover:bg-white/10 transition-all mb-2">
+              <Home size={18} /> {lng === 'vi' ? 'Về trang chủ' : 'Back to Home'}
+            </button>
+            <button onClick={() => { logout(); navigate('/'); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-red-400 hover:text-red-300 hover:bg-red-400/10 transition-all">
+              <LogOut size={18} /> {lng === 'vi' ? 'Đăng xuất' : 'Logout'}
+            </button>
+          </div>
+        </div>
+
+        {/* CONTENT AREA */}
+        <div className="flex-1 flex flex-col overflow-hidden bg-[#faf9f7] rounded-l-3xl shadow-[-10px_0_30px_rgba(0,0,0,0.05)]">
+          {/* Header */}
+          <div className="h-20 bg-white border-b border-[#f0ede6] flex items-center px-8 shrink-0">
+            <h2 className="font-display font-bold text-2xl text-[#243d91]">
+              {adminTabs.find(t => t.id === activeTab)?.label}
+            </h2>
+            <div className="ml-auto flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#f0ede6] flex items-center justify-center font-bold text-[#243d91]">
+                {user.name?.[0]?.toUpperCase()}
+              </div>
+              <div className="hidden md:block">
+                <p className="text-sm font-bold text-[#243d91]">{user.name}</p>
+                <p className="text-xs text-[#243d91]/50">{user.email}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto p-8">
+            <div className="max-w-6xl mx-auto">
+              <AnimatePresence mode="wait">
+                <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.15 }}>
+                  {activeTab === 'overview' && <AdminOverview token={token} />}
+                  {activeTab === 'events' && <AdminEvents token={token} />}
+                  {activeTab === 'tickets' && <AdminTickets token={token} />}
+                  {activeTab === 'tarot' && <AdminTarot token={token} />}
+                  {activeTab === 'bank' && <AdminBank token={token} />}
+                  {activeTab === 'addons' && <AdminAddons token={token} />}
+                  {activeTab === 'users' && <AdminUsers token={token} />}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
-  /* ============ ADMIN MENUS ============ */
-  const adminMenu = [
-    { id: 'overview', label: 'Tổng quan', icon: BarChart3 },
-    { id: 'events', label: 'Sự kiện', icon: Calendar },
-    { id: 'users', label: 'Người dùng', icon: Users },
-    { id: 'vault-admin', label: 'Kho ảnh', icon: Upload },
-    { id: 'settings', label: 'Cài đặt', icon: Settings },
-  ];
-
-  const userMenu = [
-    { id: 'tickets', label: 'Vé của tôi', icon: Ticket },
-    { id: 'profile', label: 'Hồ sơ', icon: User },
-    { id: 'notifications', label: 'Thông báo', icon: Bell },
-  ];
-
-  const menuItems = userRole === 'admin' ? adminMenu : userMenu;
-
+  // Layout for User
   return (
-    <div className="flex flex-col lg:flex-row gap-5 min-h-[70vh]">
-      {/* ===== SIDEBAR ===== */}
-      <aside className="lg:w-60 shrink-0 space-y-3">
-        {/* Avatar */}
-        <div className="bg-white rounded-2xl border border-[#ebe8dd] p-5 text-center shadow-sm">
-          <div className="relative inline-block mb-3">
-            <div className={`w-18 h-18 rounded-2xl flex items-center justify-center mx-auto ${userRole === 'admin' ? 'bg-[#243d91]' : 'bg-gradient-to-br from-[#e8539e]/20 to-[#4ecef5]/20'}`}
-              style={{ width: '4.5rem', height: '4.5rem' }}>
-              {userRole === 'admin'
-                ? <Shield size={28} className="text-white" />
-                : <User size={28} className="text-[#e8539e]" />
-              }
-            </div>
-            {userRole !== 'admin' && (
-              <button className="absolute -bottom-1 -right-1 w-6 h-6 bg-[#e8539e] text-white rounded-full flex items-center justify-center shadow border-2 border-white">
-                <Camera size={10} />
-              </button>
-            )}
+    <div className="max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            {isAdmin && <span className="text-xs font-bold bg-[#e8539e]/10 text-[#e8539e] px-2.5 py-1 rounded-full flex items-center gap-1"><Shield size={10} /> Admin</span>}
           </div>
-          <p className="font-display font-bold text-[#243d91] text-base">{userRole === 'admin' ? 'Admin TDL' : 'Nguyễn An'}</p>
-          <p className="text-xs text-[#243d91]/40 mt-0.5">{userRole === 'admin' ? 'Quản trị viên' : 'Member 2026'}</p>
-
-          {userRole === 'user' && (
-            <div className="flex gap-1.5 justify-center mt-3 flex-wrap">
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#e8539e]/10 text-[#e8539e]">Lively</span>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#4ecef5]/10 text-[#4ecef5]">Crafts</span>
-            </div>
-          )}
-          {userRole === 'admin' && (
-            <span className="inline-block mt-3 text-xs font-bold px-3 py-1.5 rounded-full bg-[#243d91] text-white">Quản trị viên</span>
-          )}
+          <h1 className="font-display font-bold text-2xl text-[#243d91]">
+            {isAdmin ? (lng === 'vi' ? 'Bảng điều khiển' : 'Admin Dashboard') : (lng === 'vi' ? `Xin chào, ${user.name}!` : `Hello, ${user.name}!`)}
+          </h1>
+          <p className="text-[#243d91]/50 text-sm">{user.email}</p>
         </div>
-
-        {/* Nav */}
-        <nav className="bg-white rounded-2xl border border-[#ebe8dd] p-2 shadow-sm">
-          {menuItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all mb-0.5 last:mb-0 ${
-                activeTab === item.id
-                  ? 'bg-[#243d91] text-white shadow-sm'
-                  : 'text-[#243d91]/60 hover:bg-[#ebe8dd]/60 hover:text-[#243d91]'
-              }`}
-            >
-              <item.icon size={16} />
-              {item.label}
-            </button>
-          ))}
-          {userRole === 'user' && (
-            <button
-              onClick={() => navigate('/vault')}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[#243d91] to-[#243d91]/80 mt-2"
-            >
-              <Lock size={16} /> Kho kỷ niệm
-            </button>
-          )}
-        </nav>
-      </aside>
-
-      {/* ===== MAIN CONTENT ===== */}
-      <div className="flex-1 min-w-0">
-        <AnimatePresence mode="wait">
-
-          {/* ─── ADMIN: OVERVIEW ─── */}
-          {activeTab === 'overview' && userRole === 'admin' && (
-            <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <div className="flex items-center justify-between mb-5">
-                <div>
-                  <h2 className="font-display font-bold text-2xl text-[#243d91]">Tổng quan</h2>
-                  <p className="text-xs text-[#243d91]/40 mt-0.5">Cập nhật: 18/06/2026 · 12:00</p>
-                </div>
-                <button className="flex items-center gap-2 text-sm font-bold px-4 py-2 bg-[#e8539e] text-white rounded-xl shadow-md shadow-[#e8539e]/25 hover:bg-[#e8539e]/90 transition-all">
-                  <Plus size={15} /> Thêm sự kiện
-                </button>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                {ADMIN_STATS.map((s) => (
-                  <div key={s.label} className={`bg-gradient-to-br ${s.color} text-white rounded-2xl p-4`}>
-                    <s.icon size={18} className="opacity-70 mb-2" />
-                    <p className="font-display font-bold text-2xl">{s.value}</p>
-                    <p className="text-xs font-semibold opacity-70 mt-0.5">{s.label}</p>
-                    <p className="text-xs font-bold opacity-90 mt-1 bg-white/15 rounded-full px-2 py-0.5 inline-block">{s.change}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Revenue chart placeholder */}
-              <div className="bg-white rounded-2xl border border-[#ebe8dd] p-5 mb-4 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-[#243d91]">Doanh thu theo tuần</h3>
-                  <select className="text-xs font-bold text-[#243d91]/50 bg-[#ebe8dd] rounded-lg px-2 py-1 border-none outline-none">
-                    <option>Tháng 6/2026</option>
-                    <option>Tháng 5/2026</option>
-                  </select>
-                </div>
-                {/* Mock bar chart */}
-                <div className="flex items-end gap-2 h-28">
-                  {[40, 65, 55, 80, 45, 90, 70].map((h, i) => (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-                      <div
-                        className="w-full rounded-t-lg bg-gradient-to-t from-[#e8539e] to-[#4ecef5] transition-all"
-                        style={{ height: `${h}%` }}
-                      />
-                      <span className="text-xs text-[#243d91]/30 font-semibold">T{i + 2}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Recent events */}
-              <div className="bg-white rounded-2xl border border-[#ebe8dd] shadow-sm overflow-hidden">
-                <div className="px-5 py-4 border-b border-[#ebe8dd] flex items-center justify-between">
-                  <h3 className="font-bold text-[#243d91]">Sự kiện gần đây</h3>
-                  <button onClick={() => setActiveTab('events')} className="text-xs font-bold text-[#4ecef5] hover:underline">Xem tất cả</button>
-                </div>
-                <div className="divide-y divide-[#ebe8dd]">
-                  {ADMIN_EVENTS.slice(0, 3).map((ev) => (
-                    <div key={ev.id} className="px-5 py-3.5 flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full shrink-0 ${ev.status === 'full' ? 'bg-red-400' : ev.status === 'almost' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-                      <p className="text-sm font-semibold text-[#243d91] flex-1 truncate">{ev.name}</p>
-                      <span className="text-xs text-[#243d91]/40 font-medium shrink-0">{ev.slots}</span>
-                      <span className="text-xs font-bold text-[#243d91]/60 shrink-0 hidden sm:block">{ev.date}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ─── ADMIN: EVENTS MANAGEMENT ─── */}
-          {activeTab === 'events' && userRole === 'admin' && (
-            <motion.div key="events" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="font-display font-bold text-2xl text-[#243d91]">Quản lý sự kiện</h2>
-                <button className="flex items-center gap-2 text-sm font-bold px-4 py-2 bg-[#e8539e] text-white rounded-xl shadow-md shadow-[#e8539e]/25">
-                  <Plus size={15} /> Thêm mới
-                </button>
-              </div>
-              <div className="bg-white rounded-2xl border border-[#ebe8dd] shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-[#ebe8dd]">
-                  <div className="relative">
-                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#243d91]/30" />
-                    <input placeholder="Tìm sự kiện..." className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#ebe8dd]/50 text-sm font-semibold text-[#243d91] outline-none placeholder-[#243d91]/30" />
-                  </div>
-                </div>
-                {/* Table */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-[#ebe8dd]/30">
-                        <th className="text-left px-5 py-3 text-xs font-bold uppercase tracking-widest text-[#243d91]/40">Sự kiện</th>
-                        <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#243d91]/40 hidden sm:table-cell">Ngày</th>
-                        <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#243d91]/40">Slot</th>
-                        <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#243d91]/40 hidden md:table-cell">Doanh thu</th>
-                        <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#243d91]/40">Trạng thái</th>
-                        <th className="px-4 py-3" />
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#ebe8dd]">
-                      {ADMIN_EVENTS.map((ev) => (
-                        <tr key={ev.id} className="hover:bg-[#ebe8dd]/20 transition-colors">
-                          <td className="px-5 py-4 font-semibold text-[#243d91] max-w-[180px] truncate">{ev.name}</td>
-                          <td className="px-4 py-4 text-[#243d91]/50 hidden sm:table-cell">{ev.date}</td>
-                          <td className="px-4 py-4 text-[#243d91]/70 font-mono text-xs">{ev.slots}</td>
-                          <td className="px-4 py-4 text-[#243d91]/60 hidden md:table-cell text-xs">{ev.revenue}</td>
-                          <td className="px-4 py-4">
-                            <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${
-                              ev.status === 'full' ? 'bg-red-100 text-red-600'
-                              : ev.status === 'almost' ? 'bg-amber-100 text-amber-600'
-                              : 'bg-emerald-100 text-emerald-600'
-                            }`}>
-                              <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                              {ev.status === 'full' ? 'Hết chỗ' : ev.status === 'almost' ? 'Sắp hết' : 'Còn chỗ'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4">
-                            <div className="flex items-center gap-1">
-                              <button className="w-8 h-8 rounded-lg hover:bg-[#4ecef5]/10 text-[#243d91]/40 hover:text-[#4ecef5] flex items-center justify-center transition-all"><Eye size={14} /></button>
-                              <button className="w-8 h-8 rounded-lg hover:bg-[#e8539e]/10 text-[#243d91]/40 hover:text-[#e8539e] flex items-center justify-center transition-all"><Edit2 size={14} /></button>
-                              <button className="w-8 h-8 rounded-lg hover:bg-red-50 text-[#243d91]/40 hover:text-red-400 flex items-center justify-center transition-all"><Trash2 size={14} /></button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ─── ADMIN: USERS MANAGEMENT ─── */}
-          {activeTab === 'users' && userRole === 'admin' && (
-            <motion.div key="users" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="font-display font-bold text-2xl text-[#243d91]">Quản lý người dùng</h2>
-                <span className="text-sm text-[#243d91]/50 font-semibold">{ADMIN_USERS.length} người dùng</span>
-              </div>
-              <div className="bg-white rounded-2xl border border-[#ebe8dd] shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-[#ebe8dd]">
-                  <div className="relative">
-                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#243d91]/30" />
-                    <input placeholder="Tìm người dùng..." className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#ebe8dd]/50 text-sm font-semibold text-[#243d91] outline-none placeholder-[#243d91]/30" />
-                  </div>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-[#ebe8dd]/30">
-                        <th className="text-left px-5 py-3 text-xs font-bold uppercase tracking-widest text-[#243d91]/40">Tên</th>
-                        <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#243d91]/40 hidden sm:table-cell">Email</th>
-                        <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#243d91]/40">Vé</th>
-                        <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#243d91]/40 hidden md:table-cell">Ngày tham gia</th>
-                        <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#243d91]/40">Trạng thái</th>
-                        <th className="px-4 py-3" />
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#ebe8dd]">
-                      {ADMIN_USERS.map((u) => (
-                        <tr key={u.id} className="hover:bg-[#ebe8dd]/20 transition-colors">
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#e8539e]/20 to-[#4ecef5]/20 flex items-center justify-center text-xs font-bold text-[#243d91]">
-                                {u.name.charAt(0)}
-                              </div>
-                              <span className="font-semibold text-[#243d91] whitespace-nowrap">{u.name}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-4 text-[#243d91]/50 hidden sm:table-cell text-xs">{u.email}</td>
-                          <td className="px-4 py-4 text-[#243d91]/70 font-bold text-center">{u.tickets}</td>
-                          <td className="px-4 py-4 text-[#243d91]/40 text-xs hidden md:table-cell">{u.joined}</td>
-                          <td className="px-4 py-4">
-                            <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${u.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-[#ebe8dd] text-[#243d91]/40'}`}>
-                              <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                              {u.status === 'active' ? 'Hoạt động' : 'Không HĐ'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4">
-                            <button className="w-8 h-8 rounded-lg hover:bg-[#ebe8dd] text-[#243d91]/40 hover:text-[#243d91] flex items-center justify-center transition-all"><MoreHorizontal size={14} /></button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ─── ADMIN: VAULT / PHOTO UPLOAD ─── */}
-          {activeTab === 'vault-admin' && userRole === 'admin' && (
-            <motion.div key="vault-admin" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <h2 className="font-display font-bold text-2xl text-[#243d91] mb-5">Kho ảnh sự kiện</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                {[
-                  { name: 'Workshop Làm Gốm Pastel', count: 12, date: '15/06' },
-                  { name: 'Đêm Cà Phê & Chuyện Kể', count: 8, date: '05/05' },
-                ].map((vault) => (
-                  <div key={vault.name} className="bg-white rounded-2xl border border-[#ebe8dd] p-4 shadow-sm flex items-center gap-4">
-                    <div className="w-12 h-12 bg-[#ebe8dd] rounded-xl flex items-center justify-center shrink-0">
-                      <Upload size={20} className="text-[#243d91]/40" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-[#243d91] truncate">{vault.name}</p>
-                      <p className="text-xs text-[#243d91]/40">{vault.count} ảnh · {vault.date}</p>
-                    </div>
-                    <button className="shrink-0 text-xs font-bold text-[#4ecef5] hover:underline">Upload thêm</button>
-                  </div>
-                ))}
-              </div>
-              <div className="border-2 border-dashed border-[#ebe8dd] rounded-2xl p-10 text-center bg-white">
-                <Upload size={24} className="text-[#243d91]/20 mx-auto mb-3" />
-                <p className="font-bold text-sm text-[#243d91]/40 mb-1">Kéo thả hoặc chọn ảnh</p>
-                <p className="text-xs text-[#243d91]/30 mb-4">PNG, JPG · Tối đa 20MB mỗi file</p>
-                <button className="text-sm font-bold px-5 py-2.5 bg-[#243d91] text-white rounded-xl hover:bg-[#243d91]/90 transition-all">Chọn tệp</button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ─── ADMIN: SETTINGS ─── */}
-          {activeTab === 'settings' && userRole === 'admin' && (
-            <motion.div key="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <h2 className="font-display font-bold text-2xl text-[#243d91] mb-5">Cài đặt hệ thống</h2>
-              <div className="bg-white rounded-2xl border border-[#ebe8dd] divide-y divide-[#ebe8dd] shadow-sm">
-                {[
-                  { label: 'Tên thương hiệu', value: 'The Date Lab', type: 'text' },
-                  { label: 'Email liên hệ', value: 'hello@thedatelab.vn', type: 'email' },
-                  { label: 'Địa chỉ', value: 'ĐH FPT Hoà Lạc, Hà Nội', type: 'text' },
-                ].map((f) => (
-                  <div key={f.label} className="px-5 py-4 flex items-center gap-4">
-                    <p className="text-sm font-bold text-[#243d91] w-36 shrink-0">{f.label}</p>
-                    <input
-                      type={f.type}
-                      defaultValue={f.value}
-                      className="flex-1 text-sm font-semibold text-[#243d91]/70 bg-[#ebe8dd]/30 rounded-xl px-3 py-2 outline-none focus:bg-[#ebe8dd] transition-all min-w-0"
-                    />
-                  </div>
-                ))}
-                <div className="px-5 py-4">
-                  <button className="text-sm font-bold px-5 py-2.5 bg-[#e8539e] text-white rounded-xl hover:bg-[#e8539e]/90 transition-all shadow-md shadow-[#e8539e]/20">Lưu thay đổi</button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ─── USER: TICKETS ─── */}
-          {activeTab === 'tickets' && userRole === 'user' && (
-            <motion.div key="tickets" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <h2 className="font-display font-bold text-2xl text-[#243d91] mb-5">Vé của tôi</h2>
-              <div className="flex gap-2 mb-5">
-                {(['upcoming', 'past'] as const).map((t) => (
-                  <button key={t} onClick={() => setTicketTab(t)} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${ticketTab === t ? 'bg-[#243d91] text-white' : 'bg-white border border-[#ebe8dd] text-[#243d91]/50 hover:bg-[#ebe8dd]/60'}`}>
-                    {t === 'upcoming' ? 'Sắp diễn ra' : 'Đã tham gia'}
-                  </button>
-                ))}
-              </div>
-              {ticketTab === 'upcoming' ? (
-                <div className="space-y-4">
-                  {MOCK_TICKETS.map((tkt) => (
-                    <div key={tkt.id} className="bg-white border border-[#ebe8dd] rounded-2xl overflow-hidden shadow-sm">
-                      <div className="flex flex-col sm:flex-row">
-                        <div className="flex-1 p-5 relative">
-                          <span className="absolute top-4 right-4 sm:relative sm:top-0 sm:right-0 sm:inline-block mb-2 bg-[#e8539e]/10 text-[#e8539e] text-xs font-bold px-2.5 py-1 rounded-full">
-                            <Clock size={10} className="inline mr-1" />{tkt.daysLeft} ngày nữa
-                          </span>
-                          <h4 className="font-display font-bold text-[#243d91] text-lg mt-1 mb-3 pr-20 sm:pr-0">{tkt.name}</h4>
-                          <div className="space-y-1.5">
-                            <p className="text-sm text-[#243d91]/60 font-semibold flex items-center gap-1.5"><Calendar size={13} className="text-[#e8539e]" /> {tkt.date} · {tkt.time}</p>
-                            <p className="text-sm text-[#243d91]/60 font-semibold flex items-center gap-1.5"><MapPin size={13} className="text-[#4ecef5]" /> {tkt.location}</p>
-                          </div>
-                        </div>
-                        <div className="sm:w-40 flex flex-col items-center justify-center p-4 bg-[#ebe8dd]/20 border-t sm:border-t-0 sm:border-l border-dashed border-[#ebe8dd]">
-                          <img src={tkt.qr} alt="QR" className="w-24 h-24 rounded-xl" />
-                          <p className="text-xs font-mono text-[#243d91]/30 mt-2">{tkt.id}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-16 border-2 border-dashed border-[#ebe8dd] rounded-2xl bg-white">
-                  <Ticket size={28} className="text-[#243d91]/15 mx-auto mb-3" />
-                  <p className="font-bold text-sm text-[#243d91]/40">Chưa có sự kiện nào đã tham gia</p>
-                  <button onClick={() => navigate('/')} className="mt-4 text-sm font-bold text-[#e8539e] hover:underline">Khám phá sự kiện →</button>
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {/* ─── USER: PROFILE ─── */}
-          {activeTab === 'profile' && userRole === 'user' && (
-            <motion.div key="profile" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <h2 className="font-display font-bold text-2xl text-[#243d91] mb-5">Hồ sơ cá nhân</h2>
-              <div className="bg-white rounded-2xl border border-[#ebe8dd] p-5 shadow-sm">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                  {[
-                    { label: 'Họ và tên', val: 'Nguyễn An', type: 'text' },
-                    { label: 'Email', val: 'an@example.com', type: 'email' },
-                    { label: 'Ngày sinh', val: '01/01/2000', type: 'text' },
-                    { label: 'Số điện thoại', val: '0912 345 678', type: 'tel' },
-                  ].map((f) => (
-                    <div key={f.label}>
-                      <label className="block text-xs font-bold uppercase tracking-widest text-[#243d91]/40 mb-1.5">{f.label}</label>
-                      <input type={f.type} defaultValue={f.val} className="w-full px-4 py-2.5 rounded-xl border-2 border-[#ebe8dd] text-sm font-semibold text-[#243d91] outline-none focus:border-[#e8539e] transition-all bg-[#ebe8dd]/20" />
-                    </div>
-                  ))}
-                </div>
-                <div className="mb-5">
-                  <label className="block text-xs font-bold uppercase tracking-widest text-[#243d91]/40 mb-1.5">Bio / Sở thích</label>
-                  <textarea rows={3} defaultValue="Thích màu xanh dương và không gian tĩnh lặng." className="w-full px-4 py-2.5 rounded-xl border-2 border-[#ebe8dd] text-sm font-semibold text-[#243d91] outline-none focus:border-[#e8539e] transition-all bg-[#ebe8dd]/20 resize-none" />
-                </div>
-                <button className="px-6 py-2.5 bg-[#e8539e] text-white font-bold rounded-xl text-sm shadow-md shadow-[#e8539e]/20 hover:bg-[#e8539e]/90 transition-all">Lưu thay đổi</button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ─── USER: NOTIFICATIONS ─── */}
-          {activeTab === 'notifications' && userRole === 'user' && (
-            <motion.div key="notifications" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <h2 className="font-display font-bold text-2xl text-[#243d91] mb-5">Thông báo</h2>
-              <div className="bg-white rounded-2xl border border-[#ebe8dd] divide-y divide-[#ebe8dd] shadow-sm mb-4">
-                {[
-                  { title: 'Workshop Làm Gốm Pastel còn 3 ngày nữa', time: '2 giờ trước', read: false, icon: Calendar, color: 'text-[#e8539e]' },
-                  { title: 'Bạn đã đặt vé thành công TKT-001', time: 'Hôm qua', read: true, icon: CheckCircle, color: 'text-emerald-500' },
-                  { title: 'Workshop Nước Hoa sắp hết slot', time: '2 ngày trước', read: true, icon: Clock, color: 'text-amber-500' },
-                ].map((notif, i) => (
-                  <div key={i} className={`px-5 py-4 flex items-start gap-3 ${!notif.read ? 'bg-[#e8539e]/2' : ''}`}>
-                    <notif.icon size={18} className={`${notif.color} shrink-0 mt-0.5`} />
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm ${notif.read ? 'text-[#243d91]/60 font-medium' : 'text-[#243d91] font-bold'}`}>{notif.title}</p>
-                      <p className="text-xs text-[#243d91]/30 mt-0.5">{notif.time}</p>
-                    </div>
-                    {!notif.read && <div className="w-2 h-2 bg-[#e8539e] rounded-full shrink-0 mt-1.5" />}
-                  </div>
-                ))}
-              </div>
-
-              <div className="bg-white rounded-2xl border border-[#ebe8dd] p-5 shadow-sm">
-                <h3 className="font-bold text-[#243d91] mb-4">Cài đặt thông báo</h3>
-                {[
-                  { label: 'Email khi có workshop mới phù hợp', checked: true },
-                  { label: 'SMS nhắc nhở trước sự kiện 24h', checked: false },
-                  { label: 'Thông báo khi có slot hủy (ưu tiên)', checked: true },
-                ].map((item) => (
-                  <label key={item.label} className="flex items-center justify-between py-2.5 cursor-pointer border-b border-[#ebe8dd] last:border-0">
-                    <span className="text-sm font-semibold text-[#243d91]/80">{item.label}</span>
-                    <div className="relative shrink-0 ml-4">
-                      <input type="checkbox" defaultChecked={item.checked} className="peer sr-only" />
-                      <div className="w-10 h-5 bg-[#ebe8dd] peer-checked:bg-[#4ecef5] rounded-full transition-colors" />
-                      <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5" />
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-        </AnimatePresence>
+        <button onClick={() => { logout(); navigate('/'); }} className="flex items-center gap-1.5 text-sm font-bold text-[#243d91]/40 hover:text-red-500 hover:bg-red-50 px-3 py-2 rounded-xl transition-all">
+          <LogOut size={15} /> {lng === 'vi' ? 'Đăng xuất' : 'Logout'}
+        </button>
       </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 overflow-x-auto no-scrollbar mb-6 bg-white rounded-2xl p-1 border border-[#f0ede6]">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === tab.id ? 'bg-[#243d91] text-white shadow-md' : 'text-[#243d91]/60 hover:text-[#243d91] hover:bg-[#f0ede6]/80'}`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      <AnimatePresence mode="wait">
+        <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }}>
+          {activeTab === 'tickets' && <UserTickets token={token} />}
+          {activeTab === 'profile' && <UserProfile token={token} />}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }

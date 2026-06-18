@@ -1,145 +1,77 @@
-# 🎨 The Date Lab — Platform Workshop & Hẹn Hò Sáng Tạo
+# 🚀 The Date Lab
 
-> *Khơi nguồn cảm hứng, lưu giữ kỷ niệm. Nơi mỗi buổi hẹn đều trở thành tác phẩm.*
+Web application cho dịch vụ workshop dating & art therapy tại Hà Nội. Hỗ trợ đa ngôn ngữ (VI/EN), tìm kiếm vibe, đặt vé, lưu trữ kỷ niệm và bốc bài Tarot gợi ý sự kiện.
 
----
-
-## 📖 Giới thiệu
-
-**The Date Lab (TDL)** là nền tảng web dành cho các workshop thủ công và sự kiện sáng tạo tại Hà Nội. Ứng dụng giúp người dùng khám phá, đặt vé và lưu giữ kỷ niệm từ các buổi hẹn tại studio TDL.
-
-### Điểm nổi bật
-- 🧭 **Khám phá sự kiện** — Feed workshop theo dạng thẻ có lọc thông minh
-- ✨ **Quiz cá nhân hoá** — 3 câu hỏi, gợi ý workshop phù hợp nhất
-- ✦ **Khám phá Tarot** — Lật bài ngẫu nhiên, nhận thông điệp và gợi ý sự kiện
-- 🎫 **Đặt vé & QR Code** — Quản lý vé trực tiếp trong tài khoản
-- 🗝️ **Kho kỷ niệm** — Lưu ảnh workshop theo từng sự kiện (private vault)
-- 🛠️ **Admin Dashboard** — Quản lý sự kiện, người dùng, doanh thu, upload ảnh
-- 🤖 **Trợ lý Chatbot** — Mascot TDL hỗ trợ tư vấn 24/7
+## 🛠 Tech Stack
+- **Frontend:** React (Vite), Tailwind CSS v4, Motion (Framer), Lucide Icons
+- **Backend:** Node.js, Vercel Serverless Functions (`/api/*`)
+- **Database:** Neon PostgreSQL + Drizzle ORM
+- **Upload:** Cloudinary
+- **Payment:** VietQR API
 
 ---
 
-## 🖥️ Công nghệ sử dụng
+## 💻 Cài đặt & Chạy Local
 
-| Layer | Công nghệ |
-|---|---|
-| Frontend Framework | React 18 + TypeScript |
-| Styling | TailwindCSS v4 |
-| Routing | React Router DOM v6 |
-| Animations | Motion (Framer Motion) |
-| Icons | Lucide React |
-| Build Tool | Vite |
-| Backend (mock) | Express + tsx |
-| AI (optional) | Google Gemini API |
-
----
-
-## 🚀 Cài đặt & Chạy
-
-### Yêu cầu
-- Node.js >= 18
-- npm >= 9
-
-### Các bước
-
+### 1. Cài đặt Dependencies
 ```bash
-# 1. Clone repo
-git clone https://github.com/your-org/the-date-lab.git
-cd the-date-lab
-
-# 2. Cài dependencies
 npm install
+```
 
-# 3. Cấu hình biến môi trường (tuỳ chọn — cho Gemini chatbot)
+### 2. Thiết lập Biến Môi Trường
+Copy file `.env.example` thành `.env` và điền thông tin:
+```bash
 cp .env.example .env
-# Điền GEMINI_API_KEY vào .env
+```
+- `DATABASE_URL`: Connection string từ Neon.tech
+- `JWT_SECRET`: Random chuỗi tối thiểu 32 ký tự
+- `CLOUDINARY_*`: Keys từ tài khoản Cloudinary
 
-# 4. Chạy dev server
+### 3. Khởi tạo Database
+Push schema lên Neon:
+```bash
+npm run db:push
+```
+*(Tùy chọn) Chạy script seed dữ liệu mẫu (sẽ tự động tạo admin, user test, 4 events, tài khoản ngân hàng và 6 lá bài tarot):*
+```bash
+npx tsx --env-file=.env scripts/seed.ts
+```
+
+### 4. Chạy Server
+Dự án sử dụng plugin Vercel để chạy cả React dev server và API functions trên cùng một port.
+```bash
 npm run dev
 ```
-
-Ứng dụng sẽ chạy tại: **http://localhost:3000**
-
----
-
-## 📁 Cấu trúc dự án
-
-```
-the-date-lab/
-├── src/
-│   ├── assets/
-│   │   ├── Logo/          # Logo TDL
-│   │   └── MASCOT/        # Nhân vật mascot (nam/nữ)
-│   ├── components/
-│   │   ├── Layout.tsx     # Navbar + Footer + Chatbot wrapper
-│   │   ├── Chatbot.tsx    # Floating chatbot với mascot
-│   │   └── TarotModal.tsx # Popup Tarot lật bài ngẫu nhiên
-│   ├── views/
-│   │   ├── HomeView.tsx        # Trang chủ — feed sự kiện
-│   │   ├── QuizView.tsx        # Quiz 3 bước cá nhân hoá
-│   │   ├── EventDetailView.tsx # Trang chi tiết sự kiện + đặt vé
-│   │   ├── DashboardView.tsx   # Tài khoản người dùng / Admin panel
-│   │   ├── VaultView.tsx       # Kho kỷ niệm
-│   │   └── AuthView.tsx        # Đăng nhập / Đăng ký
-│   ├── data.ts       # Mock data sự kiện
-│   ├── types.ts      # TypeScript interfaces
-│   ├── App.tsx       # Routing chính
-│   ├── main.tsx      # Entry point
-│   └── index.css     # TailwindCSS v4 theme + global styles
-├── server.ts         # Express backend (API + Vite proxy)
-├── vite.config.ts
-└── package.json
-```
+Mở trình duyệt tại: `http://localhost:5173`
 
 ---
 
-## 🎨 Hệ thống màu sắc
+## 🔑 Tài khoản Test (nếu đã chạy seed)
+- **Admin:** `admin@thedatelab.vn` / `admin123`
+- **User:** `user@thedatelab.vn` / `user123`
 
-| Token | Hex | Dùng cho |
-|---|---|---|
-| **Pink** | `#e8539e` | Accent chính, CTA buttons |
-| **Cyan** | `#4ecef5` | Accent phụ, highlights |
-| **Navy** | `#243d91` | Text, backgrounds |
-| **Beige** | `#f0ede6` | Nền trang chính |
+*(Tài khoản admin có quyền thêm/sửa/xóa sự kiện, lá bài tarot, xem doanh thu, thiết lập tài khoản ngân hàng nhận tiền và xác nhận đã thanh toán vé).*
 
 ---
 
-## 👥 Tài khoản demo
+## 🚀 Deploy lên Vercel
 
-| Role | Email | Mật khẩu |
-|---|---|---|
-| **Admin** | `admin@thedatelab.com` | bất kỳ |
-| **User** | bất kỳ email nào | bất kỳ |
+1. Push code lên GitHub.
+2. Import project vào **Vercel Dashboard**.
+3. Tại bước cấu hình, đảm bảo:
+   - Framework Preset: **Vite**
+   - **Environment Variables:** Thêm tất cả các biến từ file `.env` (không cần `VITE_API_BASE_URL`).
+4. Click **Deploy**.
 
----
-
-## 📋 Tính năng theo roadmap
-
-### ✅ Phase 1 — MVP (Hoàn thành)
-- [x] Trang chủ feed sự kiện với bộ lọc
-- [x] Quiz cá nhân hoá 3 bước
-- [x] Tarot popup lật bài + gợi ý sự kiện
-- [x] Trang chi tiết sự kiện + booking flow
-- [x] Dashboard người dùng (vé, hồ sơ, thông báo)
-- [x] Admin dashboard (sự kiện, người dùng, doanh thu, upload ảnh)
-- [x] Kho kỷ niệm riêng tư
-- [x] Chatbot mascot TDL
-- [x] Thiết kế responsive (mobile + desktop)
-
-### 🔜 Phase 2 — Coming Soon
-- [ ] Thanh toán thực tế (VNPay / MoMo)
-- [ ] Xác thực JWT thực sự
-- [ ] Push notification trước sự kiện
-- [ ] Tích hợp Gemini AI chatbot đầy đủ
-- [ ] Upload ảnh thực lên cloud storage
-- [ ] Social sharing kỷ niệm
+Sau khi deploy thành công, đăng nhập bằng tài khoản admin:
+- Vào **Dashboard** > **Ngân hàng**.
+- Thêm hoặc chọn một tài khoản ngân hàng và nhấn **Đặt Active**.
+- QR thanh toán sẽ tự động sinh dựa trên tài khoản đang Active này.
 
 ---
 
-## 📄 License
-
-MIT © 2026 The Date Lab Team
-
----
-
-*Made with 💕 by The Date Lab — FPT University, Hoà Lạc, Hà Nội*
+## 📜 Các lệnh hữu ích
+- `npm run dev`: Chạy dev server (Vite + Vercel Functions).
+- `npm run build`: Build bản production cho frontend.
+- `npm run db:push`: Đẩy schema lên database.
+- `npm run db:studio`: Mở UI quản lý database của Drizzle.

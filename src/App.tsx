@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import HomeView from './views/HomeView';
 import QuizView from './views/QuizView';
@@ -7,28 +7,30 @@ import EventDetailView from './views/EventDetailView';
 import DashboardView from './views/DashboardView';
 import VaultView from './views/VaultView';
 import AuthView from './views/AuthView';
+import { useAuth } from './context/AuthContext';
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <div className="flex items-center justify-center min-h-screen"><div className="w-8 h-8 border-4 border-[#e8539e] border-t-transparent rounded-full animate-spin" /></div>;
+  if (!user) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState<'user' | 'admin'>('user');
-
   return (
     <Routes>
-      <Route path="/" element={
-        <Layout
-          isAuthenticated={isAuthenticated}
-          setIsAuthenticated={setIsAuthenticated}
-          userRole={userRole}
-          setUserRole={setUserRole}
-        />
-      }>
+      <Route path="/" element={<Layout />}>
         <Route index element={<HomeView />} />
         <Route path="quiz" element={<QuizView />} />
         <Route path="event/:id" element={<EventDetailView />} />
-        <Route path="dashboard" element={<DashboardView isAuthenticated={isAuthenticated} userRole={userRole} />} />
-        <Route path="vault" element={<VaultView isAuthenticated={isAuthenticated} />} />
-        <Route path="login" element={<AuthView setIsAuthenticated={setIsAuthenticated} setUserRole={setUserRole} />} />
-        <Route path="register" element={<AuthView setIsAuthenticated={setIsAuthenticated} setUserRole={setUserRole} />} />
+        <Route path="dashboard" element={
+          <ProtectedRoute><DashboardView /></ProtectedRoute>
+        } />
+        <Route path="vault" element={
+          <ProtectedRoute><VaultView /></ProtectedRoute>
+        } />
+        <Route path="login" element={<AuthView />} />
+        <Route path="register" element={<AuthView />} />
       </Route>
     </Routes>
   );

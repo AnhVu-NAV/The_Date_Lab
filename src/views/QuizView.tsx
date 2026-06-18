@@ -2,18 +2,22 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Heart, Users, Star, ArrowRight, RotateCcw, Ticket, Calendar, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getMockEvents } from '../data';
 import { useLanguage } from '../i18n';
+import { api } from '../lib/api';
 
 export default function QuizView() {
   const navigate = useNavigate();
   const { lng, t } = useLanguage();
-  const events = getMockEvents('vi');
 
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [events, setEvents] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    api.getEvents().then(data => { if (data.length > 0) setEvents(data); }).catch(console.error);
+  }, []);
 
   // Steps built from t()
   const STEPS = [
@@ -46,21 +50,21 @@ export default function QuizView() {
     },
   ];
 
-  const SENSE_MAP: Record<string, { workshop: string; desc: string; eventId: number }> = {
+  const SENSE_MAP: Record<string, { workshop: string; desc: string; type: string }> = {
     touch: {
-      workshop: lng === 'vi' ? 'Workshop Vòng Tay Handmade' : 'Handmade Bracelet Workshop',
-      desc: lng === 'vi' ? 'Tự tay tỉ mẩn chọn từng hạt cườm — lưu giữ kỷ niệm thành món đồ mang theo bên mình.' : 'Pick each bead with care — preserve the memory as something you carry with you.',
-      eventId: 1,
+      workshop: lng === 'vi' ? 'Workshop Làm Gốm Pastel' : 'Pastel Pottery Workshop',
+      desc: lng === 'vi' ? 'Tự tay tỉ mẩn nặn đất sét — lưu giữ kỷ niệm thành món đồ mang theo bên mình.' : 'Shape the clay with care — preserve the memory as something you carry with you.',
+      type: 'Gốm',
     },
     sight: {
-      workshop: lng === 'vi' ? 'Workshop Ghép Hạt Ủi' : 'Bead Art Workshop',
-      desc: lng === 'vi' ? 'Những mảng màu rực rỡ và vui nhộn — chắc chắn sẽ mang lại rất nhiều tiếng cười.' : 'Bright and playful colors — guaranteed to bring plenty of laughter.',
-      eventId: 4,
+      workshop: lng === 'vi' ? 'Workshop Baking Bánh Bento' : 'Bento Cake Baking Workshop',
+      desc: lng === 'vi' ? 'Những mảng màu rực rỡ trên chiếc bánh dễ thương — chắc chắn sẽ mang lại rất nhiều tiếng cười.' : 'Bright and playful colors on a cute cake — guaranteed to bring plenty of laughter.',
+      type: 'Baking',
     },
     smell: {
-      workshop: lng === 'vi' ? 'Workshop Làm Mùi Hương' : 'Scent Crafting Workshop',
+      workshop: lng === 'vi' ? 'Chế Tác Nước Hoa Cá Nhân' : 'Personal Perfume Crafting',
       desc: lng === 'vi' ? 'Một không gian ngập tràn hương thơm — liệu pháp thư giãn hoàn hảo.' : 'A space filled with fragrance — the perfect relaxation therapy.',
-      eventId: 2,
+      type: 'Nước hoa',
     },
   };
 
@@ -85,7 +89,7 @@ export default function QuizView() {
 
   const sense = answers['sense'];
   const result = sense ? SENSE_MAP[sense] : null;
-  const matchEvent = result ? events.find((e) => e.id === result.eventId) || events[0] : null;
+  const matchEvent = result && events.length > 0 ? (events.find((e) => e.type === result.type) || events[0]) : null;
 
   return (
     <div className="max-w-2xl mx-auto py-4">
@@ -194,7 +198,7 @@ export default function QuizView() {
 
                 <div className="rounded-2xl border-2 border-[#f0ede6] overflow-hidden mb-5">
                   <div className="relative h-44">
-                    <img src={matchEvent.image} alt={matchEvent.title} className="w-full h-full object-cover" />
+                    <img src={matchEvent.imageUrl || matchEvent.image} alt={matchEvent.title} className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                     <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
                       <div>

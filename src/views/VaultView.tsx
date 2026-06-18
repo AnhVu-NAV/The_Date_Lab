@@ -1,112 +1,182 @@
-import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { Lock, Download, Image as Img, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Camera, X, Plus, Trash2, ImagePlus, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
 
-interface VaultViewProps {
-  isAuthenticated: boolean;
+interface Memory {
+  id: string;
+  imageUrl: string;
+  eventTitle: string;
+  caption: string;
+  createdAt: string;
 }
 
-const MOCK_VAULT = [
-  {
-    id: 1, title: 'Workshop Làm Gốm Pastel', date: 'Tháng 6 · 2026',
-    cover: 'https://images.unsplash.com/photo-1610701596007-11502861dcfa?auto=format&fit=crop&q=80&w=400&h=300',
-    count: 12,
-  },
-  {
-    id: 2, title: 'Đêm Cà Phê & Chuyện Kể', date: 'Tháng 5 · 2026',
-    cover: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=400&h=300',
-    count: 8,
-  },
-];
-
-export default function VaultView({ isAuthenticated }: VaultViewProps) {
+export default function VaultView() {
   const navigate = useNavigate();
   const { lng, t } = useLanguage();
-  const [hoverId, setHoverId] = useState<number | null>(null);
+  const { user, token } = useAuth();
+  const [memories, setMemories] = useState<Memory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
+  const [caption, setCaption] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  if (!isAuthenticated) {
-    return (
-      <div className="text-center py-20">
-        <div className="w-16 h-16 bg-[#243d91]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Lock size={28} className="text-[#243d91]" />
-        </div>
-        <h2 className="font-display font-bold text-2xl text-[#243d91] mb-2">{t('vaultTitle')}</h2>
-        <p className="text-[#243d91]/50 mb-6">
-          {lng === 'vi' ? 'Bạn cần đăng nhập để xem kỷ niệm của mình' : 'You need to log in to view your memories'}
-        </p>
-        <button onClick={() => navigate('/login')} className="bg-[#e8539e] text-white px-6 py-3 rounded-xl font-bold">
-          {lng === 'vi' ? 'Đăng nhập ngay' : 'Log in now'}
-        </button>
+  useEffect(() => {
+    if (!token) return;
+    api.getVault(token)
+      .then(setMemories)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !token) return;
+
+    setUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        const uploaded = await api.uploadImage(base64, 'vault', token);
+        const memory = await api.createMemory({
+          imageUrl: uploaded.url,
+          cloudinaryPublicId: uploaded.publicId,
+          caption,
+        }, token);
+        setMemories(prev => [memory, ...prev]);
+        setCaption('');
+      };
+      reader.readAsDataURL(file);
+    } catch (err: any) {
+      alert(err.message || 'Upload thất bại');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  if (!user) return (
+    <div className="text-center py-20">
+      <div className="w-16 h-16 bg-[#e8539e]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+        <Lock size={28} className="text-[#e8539e]" />
       </div>
-    );
-  }
+      <h2 className="font-display font-bold text-2xl text-[#243d91] mb-2">{t('vaultLocked')}</h2>
+      <p className="text-[#243d91]/60 text-sm mb-6">{t('vaultLockedDesc')}</p>
+      <button onClick={() => navigate('/login')} className="px-6 py-3 bg-[#e8539e] text-white font-bold rounded-xl hover:bg-[#e8539e]/90 transition-all">
+        {t('login')}
+      </button>
+    </div>
+  );
 
   return (
-    <div>
+    <div className="max-w-5xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 bg-white rounded-xl border border-[#f0ede6] flex items-center justify-center hover:bg-[#f0ede6] transition-all">
-          <ArrowLeft size={18} className="text-[#243d91]" />
-        </button>
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display font-bold text-3xl text-[#243d91]">{t('vaultTitle')} 🗝️</h1>
-          <p className="text-sm text-[#243d91]/50">{t('vaultDesc').split('.')[0]}</p>
+          <h1 className="font-display font-bold text-3xl text-[#243d91]">{t('vaultTitle')}</h1>
+          <p className="text-[#243d91]/50 text-sm mt-1">{t('vaultDesc')}</p>
         </div>
-        <div className="ml-auto bg-[#243d91] text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5">
-          <Lock size={11} /> {lng === 'vi' ? 'Riêng tư' : 'Private'}
-        </div>
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#e8539e] text-white font-bold rounded-xl hover:bg-[#e8539e]/90 transition-all shadow-md shadow-[#e8539e]/20 disabled:opacity-50"
+        >
+          {uploading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Plus size={16} />}
+          {lng === 'vi' ? 'Thêm kỷ niệm' : 'Add Memory'}
+        </button>
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+      </div>
+
+      {/* Caption input */}
+      <div className="flex gap-2">
+        <input
+          value={caption}
+          onChange={e => setCaption(e.target.value)}
+          placeholder={lng === 'vi' ? 'Ghi chú cho ảnh tiếp theo... (tùy chọn)' : 'Caption for next upload... (optional)'}
+          className="flex-1 px-4 py-2.5 rounded-xl border-2 border-[#f0ede6] text-sm font-semibold text-[#243d91] outline-none focus:border-[#e8539e] transition-all bg-white"
+        />
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-        {MOCK_VAULT.map((vault) => (
-          <motion.div
-            key={vault.id}
-            onHoverStart={() => setHoverId(vault.id)}
-            onHoverEnd={() => setHoverId(null)}
-            whileHover={{ y: -4 }}
-            className="bg-white rounded-2xl overflow-hidden border border-[#ebe8dd] shadow-sm group cursor-pointer"
-          >
-            <div className="relative h-48 overflow-hidden">
-              <img src={vault.cover} alt={vault.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-300 flex items-center justify-center">
-                <motion.button
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: hoverId === vault.id ? 1 : 0, scale: hoverId === vault.id ? 1 : 0.8 }}
-                  className="bg-white text-[#243d91] font-bold text-sm px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg"
-                >
-                  <Download size={14} /> {t('downloadAll')}
-                </motion.button>
-              </div>
-                <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm text-[#243d91] text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
-                  <Img size={11} /> {vault.count} {lng === 'vi' ? 'ảnh' : 'photos'}
-                </div>
-            </div>
-            <div className="p-4">
-              <h3 className="font-display font-bold text-[#243d91] mb-1">{vault.title}</h3>
-              <p className="text-xs text-[#243d91]/50 font-semibold">{vault.date}</p>
-            </div>
-          </motion.div>
-        ))}
-
-        {/* Locked slot */}
-        <div className="bg-white rounded-2xl border-2 border-dashed border-[#ebe8dd] h-60 flex flex-col items-center justify-center text-center p-6">
-          <div className="w-12 h-12 bg-[#ebe8dd] rounded-full flex items-center justify-center mb-3">
-            <Lock size={20} className="text-[#243d91]/30" />
+      {loading ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="aspect-square bg-[#f0ede6] rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      ) : memories.length === 0 ? (
+        <div className="text-center py-20 bg-white rounded-3xl border border-[#f0ede6]">
+          <div className="w-16 h-16 bg-[#e8539e]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Camera size={28} className="text-[#e8539e]" />
           </div>
-          <p className="font-bold text-sm text-[#243d91]/40">
-            {lng === 'vi' ? 'Thư mục đã khóa' : 'Locked folder'}
+          <h3 className="font-display font-bold text-xl text-[#243d91] mb-2">
+            {lng === 'vi' ? 'Kho kỷ niệm trống' : 'Your vault is empty'}
+          </h3>
+          <p className="text-[#243d91]/50 text-sm mb-6">
+            {lng === 'vi' ? 'Hãy upload ảnh đầu tiên từ buổi workshop!' : 'Upload your first photo from a workshop!'}
           </p>
-          <p className="text-xs text-[#243d91]/30 mt-1">
-            {lng === 'vi' ? 'Tham gia sự kiện tiếp theo để mở khoá' : 'Attend your next event to unlock'}
-          </p>
-          <button onClick={() => navigate('/')} className="mt-4 text-xs font-bold text-[#e8539e] hover:underline">
-            {lng === 'vi' ? 'Khám phá sự kiện →' : 'Browse events →'}
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="flex items-center gap-2 mx-auto px-5 py-3 bg-[#e8539e] text-white font-bold rounded-xl hover:bg-[#e8539e]/90 transition-all"
+          >
+            <ImagePlus size={16} /> {lng === 'vi' ? 'Upload ngay' : 'Upload now'}
           </button>
         </div>
-      </div>
+      ) : (
+        <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+          {memories.map((mem) => (
+            <motion.div
+              key={mem.id}
+              whileHover={{ scale: 1.02 }}
+              onClick={() => setSelectedMemory(mem)}
+              className="break-inside-avoid rounded-2xl overflow-hidden cursor-pointer relative group"
+            >
+              <img src={mem.imageUrl} alt={mem.caption || 'Memory'} className="w-full block" />
+              {mem.caption && (
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3 translate-y-full group-hover:translate-y-0 transition-transform">
+                  <p className="text-white text-xs font-semibold">{mem.caption}</p>
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {selectedMemory && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedMemory(null)}
+            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              className="max-w-3xl w-full"
+              onClick={e => e.stopPropagation()}
+            >
+              <img src={selectedMemory.imageUrl} alt="Memory" className="w-full rounded-2xl" />
+              {selectedMemory.caption && (
+                <p className="text-white/80 text-center mt-3 text-sm">{selectedMemory.caption}</p>
+              )}
+              <button
+                onClick={() => setSelectedMemory(null)}
+                className="absolute top-4 right-4 w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-all"
+              >
+                <X size={18} />
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

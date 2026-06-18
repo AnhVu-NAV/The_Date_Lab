@@ -1,24 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
   Bookmark, Clock, ChevronRight, Search, MapPin, Calendar,
-  Flame, Sparkles, ArrowRight
+  Flame, Sparkles, ArrowRight, AlertCircle, Hand, Eye, Flower2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getMockEvents } from '../data';
-import { Event } from '../types';
+import { api } from '../lib/api';
 import MascotHero from '../assets/MASCOT/nu1-05.png';
 import { useLanguage } from '../i18n';
 
-function StatusBadge({ status }: { status: Event['status'] }) {
+
+function StatusBadge({ status }: { status: string }) {
+  const { lng } = useLanguage();
   if (status === 'Available')
-    return <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-full">Còn chỗ</span>;
+    return <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-full">{lng === 'vi' ? 'Còn chỗ' : 'Available'}</span>;
   if (status === 'Almost Sold Out')
-    return <span className="bg-orange-100 text-orange-600 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1"><Flame size={10} />Sắp hết</span>;
+    return <span className="bg-orange-100 text-orange-600 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1"><Flame size={10} />{lng === 'vi' ? 'Sắp hết' : 'Almost Sold Out'}</span>;
   return <span className="bg-red-100 text-red-600 text-xs font-bold px-2.5 py-1 rounded-full">Sold Out</span>;
 }
 
-function EventCard({ event, onClick }: { event: Event; onClick: () => void; key?: React.Key }) {
+function EventCard({ event, onClick }: { event: any; onClick: () => void; key?: React.Key }) {
   const [saved, setSaved] = useState(false);
   return (
     <motion.div
@@ -30,7 +31,7 @@ function EventCard({ event, onClick }: { event: Event; onClick: () => void; key?
       {/* Image */}
       <div className="relative h-48 overflow-hidden shrink-0">
         <img
-          src={event.image}
+          src={event.imageUrl || event.image}
           alt={event.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
@@ -86,18 +87,116 @@ function EventCard({ event, onClick }: { event: Event; onClick: () => void; key?
   );
 }
 
+function DiscoveryQuiz({ onComplete }: { onComplete: (result: { q1: string, recommendationId: string | null, type: string, subtitle: string, title: string }) => void }) {
+  const [step, setStep] = useState(1);
+  const [q1, setQ1] = useState('');
+  const [q2, setQ2] = useState('');
+
+  const handleQ1 = (val: string) => { setQ1(val); setStep(2); };
+  const handleQ2 = (val: string) => { setQ2(val); setStep(3); };
+  const handleQ3 = (sense: 'Touch' | 'Sight' | 'Smell') => {
+    let type = '';
+    let title = '';
+    let subtitle = '';
+    let who = q1 === 'Lover' ? 'Người yêu' : q1 === 'Friends' ? 'Hội bạn thân' : 'riêng bạn';
+
+    if (sense === 'Touch') {
+      type = 'Gốm';
+      title = 'Workshop Làm Gốm Pastel';
+      subtitle = `Một món đồ tự tay nặn và vuốt ve tỉ mẩn chắc chắn sẽ là kỷ niệm tuyệt vời dành cho ${who} hôm nay. Bắt đầu làm gốm thôi!`;
+    } else if (sense === 'Sight') {
+      type = 'Baking';
+      title = 'Workshop Baking Bánh Bento';
+      subtitle = `Những mảng màu sắc rực rỡ trên chiếc bánh dễ thương chắc chắn sẽ mang lại rất nhiều tiếng cười cho ${who}. Cùng nhau trang trí bánh nhé!`;
+    } else {
+      type = 'Nước hoa';
+      title = 'Chế Tác Nước Hoa Cá Nhân';
+      subtitle = `Một không gian ngập tràn hương thơm chính là liệu pháp thư giãn hoàn hảo nhất dành cho ${who}. Khám phá ngay thế giới mùi hương nào!`;
+    }
+
+    onComplete({ q1, type, subtitle, title, recommendationId: null });
+  };
+
+  return (
+    <div className="bg-gradient-to-br from-[#243d91] to-[#e8539e] p-1 rounded-3xl shadow-xl mt-8">
+      <div className="bg-white rounded-[22px] p-6 md:p-8 min-h-[300px] flex flex-col items-center justify-center text-center relative overflow-hidden">
+        <Sparkles size={120} className="absolute -top-10 -right-10 text-[#e8539e]/5" />
+        <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-[#4ecef5]/10 rounded-full blur-3xl" />
+        
+        <div className="relative z-10 w-full max-w-xl">
+          {step === 1 && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+              <p className="text-xs font-bold text-[#e8539e] tracking-widest uppercase mb-2">Câu hỏi 1/3</p>
+              <h3 className="font-display font-bold text-2xl text-[#243d91] mb-8">Hôm nay bạn đến The Date Lab cùng ai?</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <button onClick={() => handleQ1('Lover')} className="px-6 py-4 rounded-xl border-2 border-[#f0ede6] font-bold text-[#243d91] hover:border-[#e8539e] hover:bg-[#e8539e]/5 transition-all shadow-sm">Đi cùng Người yêu</button>
+                <button onClick={() => handleQ1('Friends')} className="px-6 py-4 rounded-xl border-2 border-[#f0ede6] font-bold text-[#243d91] hover:border-[#e8539e] hover:bg-[#e8539e]/5 transition-all shadow-sm">Đi cùng Hội bạn thân</button>
+                <button onClick={() => handleQ1('Alone')} className="px-6 py-4 rounded-xl border-2 border-[#f0ede6] font-bold text-[#243d91] hover:border-[#e8539e] hover:bg-[#e8539e]/5 transition-all shadow-sm">Mình đi một mình</button>
+              </div>
+            </motion.div>
+          )}
+
+          {step === 2 && (
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+              <p className="text-xs font-bold text-[#e8539e] tracking-widest uppercase mb-2">Câu hỏi 2/3</p>
+              <h3 className="font-display font-bold text-2xl text-[#243d91] mb-8">Bạn muốn nhịp độ buổi hẹn hôm nay diễn ra thế nào?</h3>
+              <div className="flex flex-col gap-3">
+                <button onClick={() => handleQ2('Focus')} className="w-full px-6 py-4 rounded-xl border-2 border-[#f0ede6] font-bold text-[#243d91] hover:border-[#4ecef5] hover:bg-[#4ecef5]/5 transition-all text-left">Tỉ mẩn, tập trung tĩnh lặng một chút.</button>
+                <button onClick={() => handleQ2('Chatty')} className="w-full px-6 py-4 rounded-xl border-2 border-[#f0ede6] font-bold text-[#243d91] hover:border-[#4ecef5] hover:bg-[#4ecef5]/5 transition-all text-left">Vui vẻ, vừa làm vừa trò chuyện thoải mái.</button>
+                <button onClick={() => handleQ2('Relaxing')} className="w-full px-6 py-4 rounded-xl border-2 border-[#f0ede6] font-bold text-[#243d91] hover:border-[#4ecef5] hover:bg-[#4ecef5]/5 transition-all text-left">Nhẹ nhàng, thả lỏng đầu óc.</button>
+              </div>
+            </motion.div>
+          )}
+
+          {step === 3 && (
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+              <p className="text-xs font-bold text-[#e8539e] tracking-widest uppercase mb-2">Câu hỏi cuối cùng</p>
+              <h3 className="font-display font-bold text-xl md:text-2xl text-[#243d91] mb-8">Cuối cùng, bạn muốn lưu giữ kỷ niệm hôm nay qua giác quan nào?</h3>
+              <div className="flex flex-col gap-3">
+                <button onClick={() => handleQ3('Touch')} className="w-full px-6 py-4 rounded-xl border-2 border-[#f0ede6] font-bold text-[#243d91] hover:border-[#243d91] hover:bg-[#243d91]/5 transition-all text-left">
+                  <span className="text-[#e8539e] mb-1 flex items-center gap-1.5"><Hand size={18} /> Xúc giác</span>
+                  <span className="text-sm font-medium text-[#243d91]/60">Thích chạm, tự tay đan lát và mang theo bên mình.</span>
+                </button>
+                <button onClick={() => handleQ3('Sight')} className="w-full px-6 py-4 rounded-xl border-2 border-[#f0ede6] font-bold text-[#243d91] hover:border-[#243d91] hover:bg-[#243d91]/5 transition-all text-left">
+                  <span className="text-[#4ecef5] mb-1 flex items-center gap-1.5"><Eye size={18} /> Thị giác</span>
+                  <span className="text-sm font-medium text-[#243d91]/60">Thích ngắm nhìn và chơi đùa với các mảng màu rực rỡ.</span>
+                </button>
+                <button onClick={() => handleQ3('Smell')} className="w-full px-6 py-4 rounded-xl border-2 border-[#f0ede6] font-bold text-[#243d91] hover:border-[#243d91] hover:bg-[#243d91]/5 transition-all text-left">
+                  <span className="text-amber-500 mb-1 flex items-center gap-1.5"><Flower2 size={18} /> Khứu giác</span>
+                  <span className="text-sm font-medium text-[#243d91]/60">Thích đắm chìm trong hương thơm dễ chịu.</span>
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function HomeView() {
   const navigate = useNavigate();
   const { lng, t } = useLanguage();
-  const events = getMockEvents('vi');
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [relFilter, setRelFilter] = useState('');
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [quizResult, setQuizResult] = useState<any>(null);
+
+  useEffect(() => {
+    api.getEvents()
+      .then(data => setEvents(data))
+      .catch(err => setError(err.message || 'Failed to load events'))
+      .finally(() => setLoading(false));
+  }, []);
 
   const filtered = events.filter((e) => {
     const q = search.toLowerCase();
     return (
-      (e.title.toLowerCase().includes(q) || e.type.toLowerCase().includes(q)) &&
-      (relFilter === '' || e.forWho.includes(relFilter))
+      (e.title.toLowerCase().includes(q) || (e.type || '').toLowerCase().includes(q)) &&
+      (relFilter === '' || (e.forWho || []).includes(relFilter))
     );
   });
 
@@ -145,10 +244,11 @@ export default function HomeView() {
             </p>
             <div className="flex flex-col sm:flex-row gap-3 mb-8">
               <button
-                onClick={() => navigate('/quiz')}
-                className="flex items-center justify-center gap-2 px-6 py-3.5 bg-[#e8539e] text-white font-bold rounded-xl hover:bg-[#e8539e]/90 transition-all shadow-lg shadow-[#e8539e]/30"
+                onClick={() => setShowQuiz(true)}
+                className="flex items-center justify-center gap-2 px-6 py-3.5 bg-[#e8539e] text-white font-bold rounded-xl hover:bg-[#e8539e]/90 transition-all shadow-lg shadow-[#e8539e]/30 group"
               >
-                <Sparkles size={16} /> {hero.cta1}
+                <Sparkles size={16} className="group-hover:rotate-12 transition-transform" /> 
+                Trải nghiệm bài Quiz để tìm Date hoàn hảo
               </button>
               <button
                 onClick={() => document.getElementById('events-section')?.scrollIntoView({ behavior: 'smooth' })}
@@ -179,6 +279,33 @@ export default function HomeView() {
           </div>
         </div>
       </section>
+
+      {/* QUIZ SECTION */}
+      {showQuiz && !quizResult && (
+        <div id="quiz-section">
+          <DiscoveryQuiz onComplete={(res) => {
+            setQuizResult(res);
+            setSearch(res.type); // Filter list by the suggested type
+            setTimeout(() => {
+              document.getElementById('events-section')?.scrollIntoView({ behavior: 'smooth' });
+            }, 500);
+          }} />
+        </div>
+      )}
+
+      {/* QUIZ RESULT BANNER */}
+      {quizResult && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-6 text-center">
+          <h3 className="font-display font-bold text-2xl text-emerald-800 mb-2">Gợi ý dành riêng cho bạn!</h3>
+          <p className="text-emerald-700/80 max-w-2xl mx-auto mb-4">{quizResult.subtitle}</p>
+          <div className="inline-block bg-white px-6 py-3 rounded-xl border border-emerald-200 shadow-sm font-bold text-[#243d91]">
+            <div className="flex items-center gap-2"><ArrowRight size={18} className="text-[#e8539e] shrink-0" /> {quizResult.title}</div>
+          </div>
+          <div className="mt-4">
+            <button onClick={() => { setQuizResult(null); setSearch(''); setShowQuiz(false); }} className="text-sm font-bold text-emerald-600 hover:text-emerald-800 underline">Làm lại Quiz</button>
+          </div>
+        </motion.div>
+      )}
 
       {/* FILTER BAR */}
       <div id="events-section" className="bg-white rounded-2xl shadow-sm border border-[#f0ede6] p-3 flex flex-col sm:flex-row gap-3">

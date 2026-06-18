@@ -1,24 +1,54 @@
-import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { ArrowLeft, Calendar, MapPin, Minus, Plus, Sparkles, CreditCard, CheckCircle2, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { ArrowLeft, Calendar, MapPin, Minus, Plus, Sparkles, CreditCard, CheckCircle2, ChevronRight, X, Copy, Clock, Flame, Ban, Lock, PartyPopper } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getMockEvents } from '../data';
 import { useLanguage } from '../i18n';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
 
 export default function EventDetailView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { lng, t } = useLanguage();
-  const events = getMockEvents('vi');
-  const event = events.find((e) => String(e.id) === id);
+  const { user, token } = useAuth();
 
-  const [qty, setQty] = useState(1);
+  const [event, setEvent] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
   const [instax, setInstax] = useState(false);
   const [keychain, setKeychain] = useState(false);
-  const [step, setStep] = useState<'info' | 'pay' | 'done'>('info');
-  const [form, setForm] = useState({ name: '', email: '', phone: '' });
+  const [qty, setQty] = useState(1);
+  const [step, setStep] = useState<'info' | 'pay' | 'qr' | 'done'>('info');
+  const [form, setForm] = useState({ name: user?.name || '', email: user?.email || '', phone: user?.phone || '' });
+  const [ticketData, setTicketData] = useState<any>(null);
+  const [qrData, setQrData] = useState<any>(null);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [dbAddons, setDbAddons] = useState<any[]>([]);
+  const [selectedAddons, setSelectedAddons] = useState<Set<string>>(new Set());
 
-  if (!event) return (
+  useEffect(() => {
+    if (!id) return;
+    Promise.all([
+      api.getEvent(id),
+      api.getAddons().catch(() => []) // Fetch addons, ignore error if fails
+    ])
+      .then(([evt, addonsList]) => {
+        setEvent(evt);
+        setDbAddons(addonsList.filter((a: any) => a.isActive && (evt.addonIds || []).includes(a.id)));
+      })
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-20">
+      <div className="w-10 h-10 border-4 border-[#e8539e] border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  if (error || !event) return (
     <div className="text-center py-20">
       <p className="text-[#243d91]/50 font-bold mb-4">
         {lng === 'vi' ? 'Không tìm thấy sự kiện' : 'Event not found'}
@@ -31,74 +61,78 @@ export default function EventDetailView() {
 
   const basePrice = event.price * qty;
   const discount = qty >= 2 ? basePrice * 0.1 : 0;
-  const addonCost = (instax ? 50000 : 0) + (keychain ? 85000 : 0);
+  
+  // Calculate selected addon cost
+  const addonCost = dbAddons.filter(a => selectedAddons.has(a.id)).reduce((sum, a) => sum + (a.price || 0), 0);
+  
   const total = basePrice - discount + addonCost;
   const fmt = (n: number) => n.toLocaleString('vi-VN') + 'đ';
 
-  const statusLabel = event.status === 'Available'
-    ? (lng === 'vi' ? '✅ Còn chỗ' : '✅ Available')
+  const statusContent = event.status === 'Available'
+    ? <><CheckCircle2 size={14} className="mr-1 inline-block shrink-0 -mt-0.5" />{lng === 'vi' ? 'Còn chỗ' : 'Available'}</>
     : event.status === 'Almost Sold Out'
-    ? (lng === 'vi' ? '🔥 Sắp hết' : '🔥 Almost Sold Out')
-    : '❌ Sold Out';
+    ? <><Flame size={14} className="mr-1 inline-block shrink-0 -mt-0.5" />{lng === 'vi' ? 'Sắp hết' : 'Almost Sold Out'}</>
+    : <><Ban size={14} className="mr-1 inline-block shrink-0 -mt-0.5" />Sold Out</>;
 
-  const statusColor = event.status === 'Available'
-    ? 'bg-emerald-100 text-emerald-700'
-    : event.status === 'Almost Sold Out'
-    ? 'bg-orange-100 text-orange-600'
+  const statusColor = event.status === 'Available' ? 'bg-emerald-100 text-emerald-700'
+    : event.status === 'Almost Sold Out' ? 'bg-orange-100 text-orange-600'
     : 'bg-red-100 text-red-600';
 
-  const addons = [
-    {
-      id: 'instax',
-      label: lng === 'vi' ? '📸 Ảnh Instax lấy liền' : '📸 Instant Instax Photo',
-      price: 50000,
-      val: instax,
-      set: setInstax,
-    },
-    {
-      id: 'key',
-      label: lng === 'vi' ? '🗝 Móc khoá TDL' : '🗝 TDL Keychain',
-      price: 85000,
-      val: keychain,
-      set: setKeychain,
-    },
-  ];
+  const handleAddonToggle = (addonId: string) => {
+    const next = new Set(selectedAddons);
+    if (next.has(addonId)) next.delete(addonId);
+    else next.add(addonId);
+    setSelectedAddons(next);
+  };
 
-  const payFields = [
-    { key: 'name', label: t('fullName'), type: 'text', placeholder: lng === 'vi' ? 'Nguyễn Văn A' : 'Your full name' },
-    { key: 'email', label: t('email'), type: 'email', placeholder: 'email@example.com' },
-    { key: 'phone', label: lng === 'vi' ? 'Số điện thoại' : 'Phone number', type: 'tel', placeholder: '0912 345 678' },
-  ];
+  const handleBook = async () => {
+    if (!user || !token) { navigate('/login'); return; }
+    setBookingLoading(true);
+    try {
+      const addonList = dbAddons
+        .filter(a => selectedAddons.has(a.id))
+        .map(a => ({ name: lng === 'vi' ? a.name : a.nameEn, price: a.price }));
+        
+      const ticket = await api.bookTicket({ eventId: event.id, quantity: qty, addons: addonList, totalPrice: total }, token);
+      setTicketData(ticket);
+
+      // Generate QR
+      const qr = await api.generateQR({ amount: total, description: `Dat ve ${event.title}`, ticketId: ticket.paymentRef });
+      setQrData(qr);
+      setStep('qr');
+    } catch (err: any) {
+      alert(err.message || (lng === 'vi' ? 'Đặt vé thất bại' : 'Booking failed'));
+    } finally {
+      setBookingLoading(false);
+    }
+  };
+
+  const copyRef = () => {
+    navigator.clipboard.writeText(qrData?.ref || '');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="max-w-5xl mx-auto">
-      {/* Back */}
-      <button
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-2 text-sm font-bold text-[#243d91]/60 hover:text-[#243d91] mb-6 group"
-      >
+      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm font-bold text-[#243d91]/60 hover:text-[#243d91] mb-6 group">
         <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
         {lng === 'vi' ? 'Quay lại' : 'Go back'}
       </button>
 
       {step === 'done' ? (
-        /* SUCCESS */
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center py-16 flex flex-col items-center"
-        >
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-16 flex flex-col items-center">
           <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6">
             <CheckCircle2 size={40} className="text-emerald-500" />
           </div>
           <h2 className="font-display font-bold text-3xl text-[#243d91] mb-3">
-            {lng === 'vi' ? 'Đặt vé thành công! 🎉' : 'Ticket confirmed! 🎉'}
+            {lng === 'vi' ? 'Đặt vé thành công!' : 'Ticket confirmed!'} <PartyPopper size={28} className="inline-block text-[#e8539e] ml-2 -mt-2" />
           </h2>
           <p className="text-[#243d91]/60 mb-2">
-            {lng === 'vi' ? 'E-Ticket đã được gửi về' : 'Your e-ticket was sent to'} <strong>{form.email}</strong>
+            {lng === 'vi' ? 'Vé của bạn đang chờ xác nhận thanh toán.' : 'Your ticket is pending payment confirmation.'}
           </p>
           <p className="text-sm text-[#243d91]/40 mb-8">
-            {lng === 'vi' ? 'Vé sẽ được lưu trong kho vé của bạn.' : 'Your ticket is saved in your dashboard.'}
+            {lng === 'vi' ? 'Admin sẽ xác nhận trong vòng 24h.' : 'Admin will confirm within 24 hours.'}
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <button onClick={() => navigate('/dashboard')} className="px-6 py-3 bg-[#243d91] text-white font-bold rounded-xl hover:bg-[#243d91]/90 transition-all">
@@ -111,132 +145,164 @@ export default function EventDetailView() {
         </motion.div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* LEFT - Event Info */}
+          {/* LEFT */}
           <div className="lg:col-span-3 space-y-5">
-            {/* Hero */}
             <div className="relative rounded-2xl overflow-hidden h-64 md:h-80">
-              <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
+              <img src={event.imageUrl || event.image} alt={event.title} className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
               <div className="absolute top-4 left-4">
                 <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${statusColor}`}>{event.type}</span>
               </div>
-              <div className={`absolute top-4 right-4 text-xs font-bold px-3 py-1.5 rounded-full ${statusColor}`}>
-                {statusLabel}
-              </div>
+              <div className={`absolute top-4 right-4 flex items-center text-xs font-bold px-3 py-1.5 rounded-full ${statusColor}`}>{statusContent}</div>
               <div className="absolute bottom-4 left-4 right-4">
                 <h1 className="font-display font-bold text-2xl md:text-3xl text-white leading-tight">{event.title}</h1>
               </div>
             </div>
 
-            {/* Meta info */}
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-white rounded-2xl p-4 border border-[#f0ede6]">
-                <div className="flex items-center gap-2 text-[#e8539e] mb-1">
-                  <Calendar size={16} />
-                  <span className="text-xs font-bold uppercase tracking-widest">
-                    {lng === 'vi' ? 'Thời gian' : 'Date & Time'}
-                  </span>
-                </div>
+                <div className="flex items-center gap-2 text-[#e8539e] mb-1"><Calendar size={16} /><span className="text-xs font-bold uppercase tracking-widest">{lng === 'vi' ? 'Thời gian' : 'Date & Time'}</span></div>
                 <p className="font-bold text-[#243d91] text-sm">{event.date}</p>
                 <p className="text-[#243d91]/60 text-xs">{event.time}</p>
               </div>
               <div className="bg-white rounded-2xl p-4 border border-[#f0ede6]">
-                <div className="flex items-center gap-2 text-[#4ecef5] mb-1">
-                  <MapPin size={16} />
-                  <span className="text-xs font-bold uppercase tracking-widest">
-                    {lng === 'vi' ? 'Địa điểm' : 'Location'}
-                  </span>
-                </div>
+                <div className="flex items-center gap-2 text-[#4ecef5] mb-1"><MapPin size={16} /><span className="text-xs font-bold uppercase tracking-widest">{lng === 'vi' ? 'Địa điểm' : 'Location'}</span></div>
                 <p className="font-bold text-[#243d91] text-sm">{event.location}</p>
                 <p className="text-[#243d91]/60 text-xs">{event.locationType}</p>
               </div>
             </div>
 
-            {/* Description */}
             <div className="bg-white rounded-2xl p-5 border border-[#f0ede6]">
-              <h3 className="font-bold text-[#243d91] mb-2">
-                {lng === 'vi' ? 'Mô tả' : 'Description'}
-              </h3>
+              <h3 className="font-bold text-[#243d91] mb-2">{lng === 'vi' ? 'Mô tả' : 'Description'}</h3>
               <p className="text-[#243d91]/70 text-sm leading-relaxed">{event.description}</p>
             </div>
 
-            {/* Schedule */}
-            <div className="bg-white rounded-2xl p-5 border border-[#f0ede6]">
-              <h3 className="font-bold text-[#243d91] mb-4">{t('schedule')}</h3>
-              <div className="space-y-3">
-                {event.schedule.map((item, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <div className="shrink-0 w-8 h-8 bg-gradient-to-br from-[#e8539e] to-[#4ecef5] text-white text-xs font-bold rounded-full flex items-center justify-center">{i + 1}</div>
-                    <div className="flex-1 pt-1">
-                      <span className="inline-block bg-[#4ecef5]/10 text-[#4ecef5] text-xs font-bold px-2 py-0.5 rounded-full mr-2">{item.duration}</span>
-                      <span className="text-sm font-semibold text-[#243d91]">{item.activity}</span>
+            {event.schedule && event.schedule.length > 0 && (
+              <div className="bg-white rounded-2xl p-5 border border-[#f0ede6]">
+                <h3 className="font-bold text-[#243d91] mb-4">{t('schedule')}</h3>
+                <div className="space-y-3">
+                  {event.schedule.map((item: any, i: number) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <div className="shrink-0 w-8 h-8 bg-gradient-to-br from-[#e8539e] to-[#4ecef5] text-white text-xs font-bold rounded-full flex items-center justify-center">{i + 1}</div>
+                      <div className="flex-1 pt-1">
+                        <span className="inline-block bg-[#4ecef5]/10 text-[#4ecef5] text-xs font-bold px-2 py-0.5 rounded-full mr-2">{item.duration}</span>
+                        <span className="text-sm font-semibold text-[#243d91]">{item.activity}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* RIGHT - Booking */}
+          {/* RIGHT — Booking */}
           <div className="lg:col-span-2">
             <div className="sticky top-24 bg-white rounded-2xl border border-[#f0ede6] shadow-lg shadow-[#243d91]/5 overflow-hidden">
-              {/* Price header */}
               <div className="bg-gradient-to-r from-[#243d91] to-[#243d91]/80 text-white p-5">
-                <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-1">
-                  {lng === 'vi' ? 'Giá vé' : 'Ticket price'}
-                </p>
-                <p className="font-display font-bold text-3xl">
-                  {fmt(event.price)}
-                  <span className="text-lg font-sans font-normal text-white/60">
-                    /{lng === 'vi' ? 'người' : 'person'}
-                  </span>
-                </p>
+                <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-1">{lng === 'vi' ? 'Giá vé' : 'Ticket price'}</p>
+                <p className="font-display font-bold text-3xl">{fmt(event.price)}<span className="text-lg font-sans font-normal text-white/60">/{lng === 'vi' ? 'người' : 'person'}</span></p>
               </div>
+
+              {/* QR PAYMENT MODAL */}
+              <AnimatePresence>
+                {step === 'qr' && qrData && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+                    onClick={() => {}}
+                  >
+                    <motion.div
+                      initial={{ scale: 0.9, y: 20 }}
+                      animate={{ scale: 1, y: 0 }}
+                      className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-display font-bold text-[#243d91] text-lg">
+                          {lng === 'vi' ? '💳 Thanh toán' : '💳 Payment'}
+                        </h3>
+                        <button onClick={() => setStep('done')} className="w-8 h-8 rounded-full bg-[#f0ede6] flex items-center justify-center text-[#243d91]/60 hover:text-red-500 transition-all">
+                          <X size={14} />
+                        </button>
+                      </div>
+
+                      <div className="text-center">
+                        <img
+                          src={qrData.qrUrl}
+                          alt="QR Code"
+                          className="w-48 h-48 mx-auto rounded-xl border-4 border-[#f0ede6] mb-4"
+                        />
+                        <p className="font-bold text-[#243d91] text-xl mb-1">{fmt(qrData.amount)}</p>
+                        <p className="text-xs text-[#243d91]/50 mb-3">
+                          {qrData.bank.bankName} · {qrData.bank.accountNumber}
+                        </p>
+
+                        <div className="bg-[#f0ede6] rounded-xl p-3 mb-4">
+                          <p className="text-xs text-[#243d91]/50 mb-1">{lng === 'vi' ? 'Nội dung chuyển khoản' : 'Transfer note'}</p>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-bold text-[#243d91] font-mono text-sm">{qrData.ref}</p>
+                            <button onClick={copyRef} className="flex items-center gap-1 text-xs font-bold text-[#e8539e] hover:opacity-80 transition-all">
+                              <Copy size={12} /> {copied ? (lng === 'vi' ? 'Đã copy!' : 'Copied!') : 'Copy'}
+                            </button>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-[#243d91]/40 mb-4 flex items-center justify-center gap-1">
+                          <Clock size={11} /> {lng === 'vi' ? 'Chuyển khoản đúng nội dung để xác nhận nhanh hơn' : 'Include transfer note for faster confirmation'}
+                        </p>
+
+                        <button
+                          onClick={() => setStep('done')}
+                          className="w-full py-3 bg-[#e8539e] text-white font-bold rounded-xl hover:bg-[#e8539e]/90 transition-all"
+                        >
+                          {lng === 'vi' ? '✅ Đã chuyển tiền' : '✅ I have transferred'}
+                        </button>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {step === 'info' && (
                 <div className="p-5 space-y-5">
-                  {/* Qty */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-[#243d91]/60 mb-2">
-                      {t('numPeople')}
-                    </label>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-[#243d91]/60 mb-2">{t('numPeople')}</label>
                     <div className="flex items-center justify-between bg-[#f0ede6]/50 rounded-xl p-2">
                       <button onClick={() => setQty(Math.max(1, qty - 1))} className="w-9 h-9 bg-white rounded-lg flex items-center justify-center shadow-sm hover:bg-[#e8539e] hover:text-white transition-all"><Minus size={16} /></button>
                       <span className="font-display font-bold text-2xl text-[#243d91]">{qty}</span>
-                      <button onClick={() => setQty(Math.min(event.maxAttendees, qty + 1))} className="w-9 h-9 bg-white rounded-lg flex items-center justify-center shadow-sm hover:bg-[#4ecef5] hover:text-white transition-all"><Plus size={16} /></button>
+                      <button onClick={() => setQty(Math.min(event.maxAttendees || 20, qty + 1))} className="w-9 h-9 bg-white rounded-lg flex items-center justify-center shadow-sm hover:bg-[#4ecef5] hover:text-white transition-all"><Plus size={16} /></button>
                     </div>
                     {qty >= 2 && (
                       <p className="mt-2 text-xs font-bold text-[#e8539e] bg-[#e8539e]/10 px-3 py-2 rounded-lg flex items-center gap-1.5">
-                        <Sparkles size={12} />
-                        {lng === 'vi' ? `Combo ${qty} người — giảm 10%!` : `${qty}-person combo — 10% off!`}
+                        <Sparkles size={12} /> {lng === 'vi' ? `Combo ${qty} người — giảm 10%!` : `${qty}-person combo — 10% off!`}
                       </p>
                     )}
                   </div>
 
-                  {/* Add-ons */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-[#243d91]/60 mb-2">
-                      {t('addons')}
-                    </label>
-                    <div className="space-y-2">
-                      {addons.map((a) => (
-                        <label key={a.id} className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all ${a.val ? 'border-[#e8539e] bg-[#e8539e]/5' : 'border-[#f0ede6] hover:border-[#4ecef5]'}`}>
-                          <div className="flex items-center gap-2">
-                            <input type="checkbox" className="accent-[#e8539e] w-4 h-4" checked={a.val} onChange={(e) => a.set(e.target.checked)} />
-                            <span className="text-sm font-bold text-[#243d91]">{a.label}</span>
-                          </div>
-                          <span className="text-xs font-bold text-[#243d91]/50">+{fmt(a.price)}</span>
-                        </label>
-                      ))}
+                  {dbAddons.length > 0 && (
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-[#243d91]/60 mb-2">{t('addons')}</label>
+                      <div className="space-y-2">
+                        {dbAddons.map((a) => {
+                          const isSelected = selectedAddons.has(a.id);
+                          return (
+                            <label key={a.id} className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-[#e8539e] bg-[#e8539e]/5' : 'border-[#f0ede6] hover:border-[#4ecef5]'}`}>
+                              <div className="flex items-center gap-3">
+                                <input type="checkbox" className="accent-[#e8539e] w-4 h-4" checked={isSelected} onChange={() => handleAddonToggle(a.id)} />
+                                {a.imageUrl && <img src={a.imageUrl} alt="" className="w-8 h-8 rounded-lg object-cover" />}
+                                <span className="text-sm font-bold text-[#243d91]">{lng === 'vi' ? a.name : a.nameEn}</span>
+                              </div>
+                              <span className="text-xs font-bold text-[#243d91]/50">+{fmt(a.price)}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Price breakdown */}
                   <div className="border-t border-[#f0ede6] pt-4 space-y-2 text-sm">
-                    <div className="flex justify-between text-[#243d91]/60">
-                      <span>{lng === 'vi' ? `Tạm tính (${qty} vé)` : `Subtotal (${qty} ticket${qty > 1 ? 's' : ''})`}</span>
-                      <span>{fmt(basePrice)}</span>
-                    </div>
+                    <div className="flex justify-between text-[#243d91]/60"><span>{lng === 'vi' ? `Tạm tính (${qty} vé)` : `Subtotal (${qty} ticket${qty > 1 ? 's' : ''})`}</span><span>{fmt(basePrice)}</span></div>
                     {discount > 0 && <div className="flex justify-between text-[#e8539e]"><span>{lng === 'vi' ? 'Ưu đãi combo' : 'Combo discount'}</span><span>-{fmt(discount)}</span></div>}
                     {addonCost > 0 && <div className="flex justify-between text-[#4ecef5]"><span>{lng === 'vi' ? 'Dịch vụ thêm' : 'Add-ons'}</span><span>+{fmt(addonCost)}</span></div>}
                     <div className="flex justify-between font-display font-bold text-lg text-[#243d91] border-t border-dashed border-[#f0ede6] pt-2">
@@ -245,59 +311,26 @@ export default function EventDetailView() {
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => setStep('pay')}
-                    disabled={event.status === 'Sold Out'}
-                    className="w-full py-3.5 bg-[#e8539e] text-white font-bold rounded-xl hover:bg-[#e8539e]/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-[#e8539e]/30 flex items-center justify-center gap-2"
-                  >
-                    {event.status === 'Sold Out'
-                      ? (lng === 'vi' ? 'Hết vé' : 'Sold Out')
-                      : (<><span>{t('getTickets')}</span><ChevronRight size={18} /></>)
-                    }
-                  </button>
+                  {!user ? (
+                    <button onClick={() => navigate('/login')} className="w-full py-3.5 bg-[#243d91] text-white font-bold rounded-xl hover:bg-[#243d91]/90 transition-all flex items-center justify-center gap-2">
+                      <Lock size={16} /> {lng === 'vi' ? 'Đăng nhập để đặt vé' : 'Log in to book'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleBook}
+                      disabled={event.status === 'Sold Out' || bookingLoading}
+                      className="w-full py-3.5 bg-[#e8539e] text-white font-bold rounded-xl hover:bg-[#e8539e]/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-[#e8539e]/30 flex items-center justify-center gap-2"
+                    >
+                      {bookingLoading ? (
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : event.status === 'Sold Out' ? (
+                        lng === 'vi' ? 'Hết vé' : 'Sold Out'
+                      ) : (
+                        <><span>{t('getTickets')}</span><ChevronRight size={18} /></>
+                      )}
+                    </button>
+                  )}
                 </div>
-              )}
-
-              {step === 'pay' && (
-                <form className="p-5 space-y-4" onSubmit={(e) => { e.preventDefault(); setStep('done'); }}>
-                  <h3 className="font-bold text-[#243d91]">
-                    {lng === 'vi' ? 'Thông tin người đặt' : 'Booking information'}
-                  </h3>
-                  {payFields.map((f) => (
-                    <div key={f.key}>
-                      <label className="block text-xs font-bold uppercase text-[#243d91]/60 mb-1">{f.label}</label>
-                      <input
-                        type={f.type}
-                        required
-                        placeholder={f.placeholder}
-                        value={form[f.key as keyof typeof form]}
-                        onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
-                        className="w-full px-4 py-2.5 rounded-xl border-2 border-[#f0ede6] text-sm font-semibold text-[#243d91] outline-none focus:border-[#e8539e] transition-all bg-[#f0ede6]/30"
-                      />
-                    </div>
-                  ))}
-
-                  {/* Mock payment */}
-                  <div className="bg-[#243d91] rounded-xl p-4 text-white flex items-center gap-3">
-                    <CreditCard size={20} className="text-[#4ecef5] shrink-0" />
-                    <div>
-                      <p className="text-xs font-bold text-white/60 mb-0.5">
-                        {lng === 'vi' ? 'Thanh toán qua' : 'Payment via'}
-                      </p>
-                      <p className="font-bold text-sm">VNPay / Momo / QR Bank</p>
-                    </div>
-                    <span className="ml-auto font-display font-bold text-[#e8539e]">{fmt(total)}</span>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button type="button" onClick={() => setStep('info')} className="flex-1 py-3 rounded-xl bg-[#f0ede6] text-[#243d91] font-bold text-sm">
-                      {lng === 'vi' ? 'Quay lại' : 'Back'}
-                    </button>
-                    <button type="submit" className="flex-[2] py-3 rounded-xl bg-[#e8539e] text-white font-bold text-sm shadow-lg shadow-[#e8539e]/30">
-                      {lng === 'vi' ? 'Xác nhận & Thanh toán' : t('payNow')}
-                    </button>
-                  </div>
-                </form>
               )}
             </div>
           </div>

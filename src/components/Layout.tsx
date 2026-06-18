@@ -1,31 +1,23 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import {
-  User, Lock, Menu, X, LogIn, LogOut, Shield,
-  Sparkles, Compass, MapPin, Mail
-} from 'lucide-react';
+import { User, Lock, Menu, X, LogIn, LogOut, Shield, Sparkles, Compass, MapPin, Mail } from 'lucide-react';
 import Chatbot from './Chatbot';
 import TarotModal from './TarotModal';
 import Logo from '../assets/Logo/2.png';
 import { useLanguage } from '../i18n';
+import { useAuth } from '../context/AuthContext';
 
-interface LayoutProps {
-  isAuthenticated: boolean;
-  setIsAuthenticated: (v: boolean) => void;
-  userRole: 'user' | 'admin';
-  setUserRole: (v: 'user' | 'admin') => void;
-}
-
-export default function Layout({ isAuthenticated, setIsAuthenticated, userRole, setUserRole }: LayoutProps) {
+export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { lng, setLng, t } = useLanguage();
+  const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [tarotOpen, setTarotOpen] = useState(false);
 
   const handleLogout = () => {
-    setIsAuthenticated(false);
+    logout();
     navigate('/');
     setMobileMenuOpen(false);
   };
@@ -36,10 +28,13 @@ export default function Layout({ isAuthenticated, setIsAuthenticated, userRole, 
     { label: t('navVault'), path: '/vault', icon: <Lock size={14} /> },
   ];
 
+  const isAdminDashboard = location.pathname === '/dashboard' && user?.role === 'admin';
+
   return (
     <div className="min-h-screen flex flex-col bg-[#f0ede6]">
       {/* NAVBAR */}
-      <header className="sticky top-0 z-50 px-4 pt-3 pb-1">
+      {!isAdminDashboard && (
+        <header className="sticky top-0 z-50 px-4 pt-3 pb-1">
         <nav className="max-w-7xl mx-auto bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg shadow-[#243d91]/5 border border-white px-4 md:px-6 py-3 flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2.5 shrink-0">
@@ -65,7 +60,6 @@ export default function Layout({ isAuthenticated, setIsAuthenticated, userRole, 
                 <span>{item.label}</span>
               </Link>
             ))}
-            {/* Tarot button */}
             <button
               onClick={() => setTarotOpen(true)}
               className="flex items-center gap-1.5 text-sm font-bold px-3.5 py-2 rounded-xl text-[#243d91]/60 hover:text-[#243d91] hover:bg-[#f0ede6]/80 transition-all"
@@ -81,13 +75,12 @@ export default function Layout({ isAuthenticated, setIsAuthenticated, userRole, 
             <button
               onClick={() => setLng(lng === 'vi' ? 'en' : 'vi')}
               className="hidden md:flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl border-2 border-[#f0ede6] text-[#243d91]/60 hover:border-[#e8539e]/30 hover:text-[#243d91] transition-all bg-white/60"
-              title="Switch language"
             >
               <span className="text-base leading-none">{lng === 'vi' ? '🇻🇳' : '🇺🇸'}</span>
               <span>{lng === 'vi' ? 'VI' : 'EN'}</span>
             </button>
 
-            {isAuthenticated ? (
+            {user ? (
               <>
                 <button
                   onClick={() => navigate('/dashboard')}
@@ -97,8 +90,8 @@ export default function Layout({ isAuthenticated, setIsAuthenticated, userRole, 
                       : 'bg-[#f0ede6] text-[#243d91] hover:bg-[#243d91]/10'
                   }`}
                 >
-                  {userRole === 'admin' ? <Shield size={16} /> : <User size={16} />}
-                  {userRole === 'admin' ? 'Admin' : t('navDashboard')}
+                  {user.role === 'admin' ? <Shield size={16} /> : <User size={16} />}
+                  <span className="hidden lg:inline">{user.role === 'admin' ? 'Admin' : t('navDashboard')}</span>
                 </button>
                 <button
                   onClick={handleLogout}
@@ -154,25 +147,22 @@ export default function Layout({ isAuthenticated, setIsAuthenticated, userRole, 
               >
                 <span className="text-base leading-none">✦</span> {t('navTarot')}
               </button>
-
-              {/* Language toggle mobile */}
               <button
-                onClick={() => { setLng(lng === 'vi' ? 'en' : 'vi'); }}
+                onClick={() => setLng(lng === 'vi' ? 'en' : 'vi')}
                 className="flex items-center gap-2.5 px-4 py-3 rounded-xl font-bold text-sm text-[#243d91] hover:bg-[#f0ede6] transition-all"
               >
                 <span className="text-lg">{lng === 'vi' ? '🇻🇳' : '🇺🇸'}</span>
                 {lng === 'vi' ? 'Chuyển sang English' : 'Switch to Tiếng Việt'}
               </button>
-
               <div className="border-t border-[#f0ede6] my-1" />
-              {isAuthenticated ? (
+              {user ? (
                 <>
                   <button
                     onClick={() => { navigate('/dashboard'); setMobileMenuOpen(false); }}
                     className="flex items-center gap-2.5 px-4 py-3 rounded-xl font-bold text-sm text-[#243d91] hover:bg-[#f0ede6] transition-all"
                   >
-                    {userRole === 'admin' ? <Shield size={16} /> : <User size={16} />}
-                    {userRole === 'admin' ? 'Admin Panel' : t('navDashboard')}
+                    {user.role === 'admin' ? <Shield size={16} /> : <User size={16} />}
+                    {user.role === 'admin' ? 'Admin Panel' : t('navDashboard')}
                   </button>
                   <button
                     onClick={handleLogout}
@@ -194,14 +184,16 @@ export default function Layout({ isAuthenticated, setIsAuthenticated, userRole, 
           )}
         </AnimatePresence>
       </header>
+      )}
 
       {/* Page Content */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6">
+      <main className={`flex-1 w-full ${isAdminDashboard ? '' : 'max-w-7xl mx-auto px-4 py-6'}`}>
         <Outlet />
       </main>
 
       {/* FOOTER */}
-      <footer className="bg-[#243d91] text-white mt-16">
+      {!isAdminDashboard && (
+        <footer className="bg-[#243d91] text-white mt-16">
         <div className="max-w-7xl mx-auto px-4 py-12 grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
             <div className="flex items-center gap-2 mb-3">
@@ -240,6 +232,7 @@ export default function Layout({ isAuthenticated, setIsAuthenticated, userRole, 
           © 2026 The Date Lab. All rights reserved.
         </div>
       </footer>
+      )}
 
       <TarotModal isOpen={tarotOpen} onClose={() => setTarotOpen(false)} />
       <Chatbot />

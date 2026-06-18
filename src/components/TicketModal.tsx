@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Check } from 'lucide-react';
 import { useLanguage } from '../i18n';
 
 interface Props {
@@ -34,7 +35,7 @@ export default function TicketModal({ isOpen, onClose }: Props) {
         >
           {success ? (
             <div className="text-center py-12 flex flex-col items-center">
-              <div className="w-20 h-20 bg-brand-cyan/20 text-brand-cyan border-4 border-brand-cyan rounded-full flex items-center justify-center mb-6 text-4xl font-bold">✓</div>
+              <div className="w-20 h-20 bg-brand-cyan/20 text-brand-cyan border-4 border-brand-cyan rounded-full flex items-center justify-center mb-6 text-4xl font-bold"><Check size={36} strokeWidth={3} /></div>
               <h2 className="font-display text-4xl text-brand-navy mb-4 tracking-wide">{t('ticketSecured')}</h2>
               <p className="text-brand-navy/70 text-lg font-bold">{t('ticketSent')}</p>
             </div>

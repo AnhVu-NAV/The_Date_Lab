@@ -1,177 +1,71 @@
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI, Type, Modality } from '@google/genai';
+
+import authLogin from './api/auth/login.ts';
+import authRegister from './api/auth/register.ts';
+import authMe from './api/auth/me.ts';
+import eventsIndex from './api/events/index.ts';
+import eventsId from './api/events/[id].ts';
+import ticketsIndex from './api/tickets/index.ts';
+import ticketsId from './api/tickets/[id].ts';
+import paymentQr from './api/payment/qr.ts';
+import vaultIndex from './api/vault/index.ts';
+import vaultUpload from './api/vault/upload.ts';
+import tarotIndex from './api/tarot/index.ts';
+import tarotId from './api/tarot/[id].ts';
+import adminStats from './api/admin/stats.ts';
+import adminUsers from './api/admin/users.ts';
+import adminBankIndex from './api/admin/bank.ts';
+import adminBankId from './api/admin/bank/[id].ts';
+import adminBankActivate from './api/admin/bank/[id]/activate.ts';
+import adminAddonsIndex from './api/admin/addons.ts';
+import adminAddonsId from './api/admin/addons/[id].ts';
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = 5173; // Run on 5173 to match Vite's default
 
-  app.use(express.json());
+  app.use(express.json({ limit: '10mb' }));
 
-  const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      }
-    }
-  });
-
-  // API Routes
-  app.post('/api/gemini/quiz', async (req, res) => {
+  const handle = (handler: any) => async (req: express.Request, res: express.Response) => {
     try {
-      const { answers, lng } = req.body;
-      const languageInstruction = lng === 'vi' ? 'Respond strictly in Vietnamese.' : 'Respond in English.';
-      const prompt = `Based on these personality quiz answers: ${JSON.stringify(answers)}, determine the user's event personality type, current mood, and suggest 3 types of events they should attend.
-${languageInstruction}
-Return a JSON object with properties:
-- personalityType (string)
-- currentMood (string)
-- eventTypes (array of strings)`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              personalityType: { type: Type.STRING },
-              currentMood: { type: Type.STRING },
-              eventTypes: { type: Type.ARRAY, items: { type: Type.STRING } }
-            },
-            required: ['personalityType', 'currentMood', 'eventTypes']
-          }
-        }
-      });
-      res.json(JSON.parse(response.text || '{}'));
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Failed to process quiz' });
+      // Vercel expects params to be merged into query
+      req.query = { ...req.query, ...req.params };
+      await handler(req, res);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Internal server error' });
     }
-  });
+  };
 
-  app.post('/api/gemini/tarot', async (req, res) => {
-    try {
-      const { cards, lng } = req.body;
-      const languageInstruction = lng === 'vi' ? 'Respond strictly in Vietnamese.' : 'Respond in English.';
-      const prompt = `The user picked these tarot cards: ${cards.join(', ')}. Interpret them in a fun, entertaining way related to attending social events and going out. Suggest what kind of mood they are in and what event they should attend.
-${languageInstruction}
-Return JSON with properties:
-- mood (string)
-- advice (string)
-- eventType (string)`;
+  app.all('/api/auth/login', handle(authLogin));
+  app.all('/api/auth/register', handle(authRegister));
+  app.all('/api/auth/me', handle(authMe));
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              mood: { type: Type.STRING },
-              advice: { type: Type.STRING },
-              eventType: { type: Type.STRING }
-            },
-            required: ['mood', 'advice', 'eventType']
-          }
-        }
-      });
-      res.json(JSON.parse(response.text || '{}'));
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Failed to process tarot' });
-    }
-  });
+  app.all('/api/events', handle(eventsIndex));
+  app.all('/api/events/:id', handle(eventsId));
 
-  app.post('/api/gemini/weather', async (req, res) => {
-    try {
-      const { location, weatherConditions, lng } = req.body;
-      const languageInstruction = lng === 'vi' ? 'Respond strictly in Vietnamese.' : 'Respond in English.';
-      const prompt = `The current weather in ${location} is ${weatherConditions}. Give a fun, practical suggestion on whether they should attend indoor or outdoor events, what they should wear, and if they need an umbrella/jacket.
-${languageInstruction}
-Return JSON with properties:
-- insideOrOutside (string)
-- outfitAdvice (string)
-- vibe (string)`;
+  app.all('/api/tickets', handle(ticketsIndex));
+  app.all('/api/tickets/:id', handle(ticketsId));
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-             type: Type.OBJECT,
-             properties: {
-               insideOrOutside: { type: Type.STRING },
-               outfitAdvice: { type: Type.STRING },
-               vibe: { type: Type.STRING }
-             },
-             required: ['insideOrOutside', 'outfitAdvice', 'vibe']
-          }
-        }
-      });
-      res.json(JSON.parse(response.text || '{}'));
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Failed to process weather' });
-    }
-  });
+  app.all('/api/payment/qr', handle(paymentQr));
 
-  app.post('/api/gemini/dresscode', async (req, res) => {
-    try {
-      const { eventName, eventType, lng } = req.body;
-      const languageInstruction = lng === 'vi' ? 'Respond strictly in Vietnamese.' : 'Respond in English.';
-      const prompt = `Based on an event named "${eventName}" of type "${eventType}", suggest a dresscode suitable for it in a fun, fashionable tone. Include styles like Casual, Smart casual, Cute pastel, Outdoor comfy, Date night, Artsy style, or Minimal chic.
-${languageInstruction}
-Return JSON with properties:
-- style (string)
-- outfitSuggestion (string)`;
+  app.all('/api/vault', handle(vaultIndex));
+  app.all('/api/vault/upload', handle(vaultUpload));
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-               style: { type: Type.STRING },
-               outfitSuggestion: { type: Type.STRING }
-            },
-            required: ['style', 'outfitSuggestion']
-          }
-        }
-      });
-      res.json(JSON.parse(response.text || '{}'));
-    } catch (error) {
-       console.error(error);
-       res.status(500).json({ error: 'Failed to process dresscode' });
-    }
-  });
+  app.all('/api/tarot', handle(tarotIndex));
+  app.all('/api/tarot/:id', handle(tarotId));
 
-  app.post('/api/gemini/chatbot', async (req, res) => {
-    try {
-      const { message, context, lng } = req.body;
-      const languageInstruction = lng === 'vi' ? 'Respond strictly in Vietnamese.' : 'Respond in English.';
-      const prompt = `System: You are a friendly, fun, stylish event assistant for a platform similar to Meetup. The user is asking about events. Answer concisely, warmly, and helpfully.
-${languageInstruction}
-Context about current view: ${context}
-User: ${message}`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt
-      });
-      res.json({ reply: response.text });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Failed to process chatbot logic' });
-    }
-  });
+  app.all('/api/admin/stats', handle(adminStats));
+  app.all('/api/admin/users', handle(adminUsers));
+  app.all('/api/admin/bank', handle(adminBankIndex));
+  app.all('/api/admin/bank/:id', handle(adminBankId));
+  app.all('/api/admin/bank/:id/activate', handle(adminBankActivate));
+  app.all('/api/admin/addons', handle(adminAddonsIndex));
+  app.all('/api/admin/addons/:id', handle(adminAddonsId));
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
@@ -183,7 +77,6 @@ User: ${message}`;
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    // For Express 4
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
