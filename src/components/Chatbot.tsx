@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Send, Minimize2 } from 'lucide-react';
 import MascotImg from '../assets/MASCOT/nam2-05.png';
+import { useLanguage } from '../i18n';
 
 interface Msg { role: 'user' | 'bot'; text: string; }
 
-const QUICK_REPLIES = ['Sự kiện sắp tới?', 'Dresscode gợi ý?', 'Giá vé bao nhiêu?'];
+const QUICK_REPLIES_VI = ['Sự kiện sắp tới?', 'Dresscode gợi ý?', 'Giá vé bao nhiêu?'];
+const QUICK_REPLIES_EN = ['Upcoming events?', 'Dresscode tips?', 'Ticket prices?'];
 
 const MOCK_RESPONSES: Record<string, string> = {
   default: 'Xin chào! Mình là trợ lý TDL 💕 Mình có thể giúp bạn tìm sự kiện phù hợp, gợi ý trang phục, hoặc giải đáp bất kỳ thắc mắc nào nhé!',
@@ -15,11 +17,17 @@ const MOCK_RESPONSES: Record<string, string> = {
 };
 
 export default function Chatbot() {
+  const { lng, t } = useLanguage();
   const [open, setOpen] = useState(false);
-  const [msgs, setMsgs] = useState<Msg[]>([{ role: 'bot', text: MOCK_RESPONSES.default }]);
+  const [msgs, setMsgs] = useState<Msg[]>([{ role: 'bot', text: t('botGreeting') }]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Update greeting when language changes
+  useEffect(() => {
+    setMsgs([{ role: 'bot', text: t('botGreeting') }]);
+  }, [lng]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -86,9 +94,9 @@ export default function Chatbot() {
                 <img src={MascotImg} alt="Mascot" className="w-full h-full object-cover" />
               </div>
               <div>
-                <p className="font-display font-bold text-white text-sm">Trợ lý The Date Lab</p>
+                <p className="font-display font-bold text-white text-sm">{t('vibeAssistant')}</p>
                 <p className="text-white/60 text-xs flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-green-400 rounded-full inline-block" /> Đang hoạt động
+                  <span className="w-1.5 h-1.5 bg-green-400 rounded-full inline-block" /> {lng === 'vi' ? 'Đang hoạt động' : 'Online'}
                 </p>
               </div>
               <button onClick={() => setOpen(false)} className="ml-auto w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all">
@@ -134,7 +142,7 @@ export default function Chatbot() {
 
             {/* Quick replies */}
             <div className="px-3 pt-2 flex gap-2 overflow-x-auto no-scrollbar pb-1 border-t border-[#ebe8dd]">
-              {QUICK_REPLIES.map((q) => (
+              {(lng === 'vi' ? QUICK_REPLIES_VI : QUICK_REPLIES_EN).map((q) => (
                 <button key={q} onClick={() => send(q)} className="shrink-0 bg-[#ebe8dd] hover:bg-[#4ecef5]/10 text-[#243d91] text-xs font-bold px-3 py-1.5 rounded-full transition-all">
                   {q}
                 </button>
@@ -147,7 +155,7 @@ export default function Chatbot() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && send(input)}
-                placeholder="Nhắn tin cho TDL..."
+                placeholder={t('chatPlaceholder')}
                 className="flex-1 bg-[#ebe8dd]/60 rounded-xl px-4 py-2 text-sm font-semibold text-[#243d91] outline-none placeholder-[#243d91]/30 focus:bg-[#ebe8dd]"
               />
               <button

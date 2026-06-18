@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Calendar, MapPin, Users, Minus, Plus, Sparkles, CreditCard, CheckCircle2, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Minus, Plus, Sparkles, CreditCard, CheckCircle2, ChevronRight } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getMockEvents } from '../data';
+import { useLanguage } from '../i18n';
 
 export default function EventDetailView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { lng, t } = useLanguage();
   const events = getMockEvents('vi');
   const event = events.find((e) => String(e.id) === id);
 
@@ -18,22 +20,55 @@ export default function EventDetailView() {
 
   if (!event) return (
     <div className="text-center py-20">
-      <p className="text-[#243d91]/50 font-bold mb-4">Không tìm thấy sự kiện</p>
-      <button onClick={() => navigate('/')} className="bg-[#e8539e] text-white px-6 py-3 rounded-xl font-bold">Về trang chủ</button>
+      <p className="text-[#243d91]/50 font-bold mb-4">
+        {lng === 'vi' ? 'Không tìm thấy sự kiện' : 'Event not found'}
+      </p>
+      <button onClick={() => navigate('/')} className="bg-[#e8539e] text-white px-6 py-3 rounded-xl font-bold">
+        {lng === 'vi' ? 'Về trang chủ' : 'Back to home'}
+      </button>
     </div>
   );
 
   const basePrice = event.price * qty;
   const discount = qty >= 2 ? basePrice * 0.1 : 0;
-  const addons = (instax ? 50000 : 0) + (keychain ? 85000 : 0);
-  const total = basePrice - discount + addons;
+  const addonCost = (instax ? 50000 : 0) + (keychain ? 85000 : 0);
+  const total = basePrice - discount + addonCost;
   const fmt = (n: number) => n.toLocaleString('vi-VN') + 'đ';
+
+  const statusLabel = event.status === 'Available'
+    ? (lng === 'vi' ? '✅ Còn chỗ' : '✅ Available')
+    : event.status === 'Almost Sold Out'
+    ? (lng === 'vi' ? '🔥 Sắp hết' : '🔥 Almost Sold Out')
+    : '❌ Sold Out';
 
   const statusColor = event.status === 'Available'
     ? 'bg-emerald-100 text-emerald-700'
     : event.status === 'Almost Sold Out'
     ? 'bg-orange-100 text-orange-600'
     : 'bg-red-100 text-red-600';
+
+  const addons = [
+    {
+      id: 'instax',
+      label: lng === 'vi' ? '📸 Ảnh Instax lấy liền' : '📸 Instant Instax Photo',
+      price: 50000,
+      val: instax,
+      set: setInstax,
+    },
+    {
+      id: 'key',
+      label: lng === 'vi' ? '🗝 Móc khoá TDL' : '🗝 TDL Keychain',
+      price: 85000,
+      val: keychain,
+      set: setKeychain,
+    },
+  ];
+
+  const payFields = [
+    { key: 'name', label: t('fullName'), type: 'text', placeholder: lng === 'vi' ? 'Nguyễn Văn A' : 'Your full name' },
+    { key: 'email', label: t('email'), type: 'email', placeholder: 'email@example.com' },
+    { key: 'phone', label: lng === 'vi' ? 'Số điện thoại' : 'Phone number', type: 'tel', placeholder: '0912 345 678' },
+  ];
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -43,7 +78,7 @@ export default function EventDetailView() {
         className="flex items-center gap-2 text-sm font-bold text-[#243d91]/60 hover:text-[#243d91] mb-6 group"
       >
         <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-        Quay lại
+        {lng === 'vi' ? 'Quay lại' : 'Go back'}
       </button>
 
       {step === 'done' ? (
@@ -56,15 +91,21 @@ export default function EventDetailView() {
           <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6">
             <CheckCircle2 size={40} className="text-emerald-500" />
           </div>
-          <h2 className="font-display font-bold text-3xl text-[#243d91] mb-3">Đặt vé thành công! 🎉</h2>
-          <p className="text-[#243d91]/60 mb-2">E-Ticket đã được gửi về <strong>{form.email}</strong></p>
-          <p className="text-sm text-[#243d91]/40 mb-8">Vé sẽ được lưu trong kho vé của bạn.</p>
+          <h2 className="font-display font-bold text-3xl text-[#243d91] mb-3">
+            {lng === 'vi' ? 'Đặt vé thành công! 🎉' : 'Ticket confirmed! 🎉'}
+          </h2>
+          <p className="text-[#243d91]/60 mb-2">
+            {lng === 'vi' ? 'E-Ticket đã được gửi về' : 'Your e-ticket was sent to'} <strong>{form.email}</strong>
+          </p>
+          <p className="text-sm text-[#243d91]/40 mb-8">
+            {lng === 'vi' ? 'Vé sẽ được lưu trong kho vé của bạn.' : 'Your ticket is saved in your dashboard.'}
+          </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <button onClick={() => navigate('/dashboard')} className="px-6 py-3 bg-[#243d91] text-white font-bold rounded-xl hover:bg-[#243d91]/90 transition-all">
-              Xem vé của tôi
+              {lng === 'vi' ? 'Xem vé của tôi' : 'View my tickets'}
             </button>
-            <button onClick={() => navigate('/')} className="px-6 py-3 bg-[#ebe8dd] text-[#243d91] font-bold rounded-xl hover:bg-[#ebe8dd]/70 transition-all">
-              Về trang chủ
+            <button onClick={() => navigate('/')} className="px-6 py-3 bg-[#f0ede6] text-[#243d91] font-bold rounded-xl hover:bg-[#f0ede6]/70 transition-all">
+              {lng === 'vi' ? 'Về trang chủ' : 'Back to home'}
             </button>
           </div>
         </motion.div>
@@ -80,7 +121,7 @@ export default function EventDetailView() {
                 <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${statusColor}`}>{event.type}</span>
               </div>
               <div className={`absolute top-4 right-4 text-xs font-bold px-3 py-1.5 rounded-full ${statusColor}`}>
-                {event.status === 'Available' ? '✅ Còn chỗ' : event.status === 'Almost Sold Out' ? '🔥 Sắp hết' : '❌ Sold Out'}
+                {statusLabel}
               </div>
               <div className="absolute bottom-4 left-4 right-4">
                 <h1 className="font-display font-bold text-2xl md:text-3xl text-white leading-tight">{event.title}</h1>
@@ -89,27 +130,39 @@ export default function EventDetailView() {
 
             {/* Meta info */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white rounded-2xl p-4 border border-[#ebe8dd]">
-                <div className="flex items-center gap-2 text-[#e8539e] mb-1"><Calendar size={16} /><span className="text-xs font-bold uppercase tracking-widest">Thời gian</span></div>
+              <div className="bg-white rounded-2xl p-4 border border-[#f0ede6]">
+                <div className="flex items-center gap-2 text-[#e8539e] mb-1">
+                  <Calendar size={16} />
+                  <span className="text-xs font-bold uppercase tracking-widest">
+                    {lng === 'vi' ? 'Thời gian' : 'Date & Time'}
+                  </span>
+                </div>
                 <p className="font-bold text-[#243d91] text-sm">{event.date}</p>
                 <p className="text-[#243d91]/60 text-xs">{event.time}</p>
               </div>
-              <div className="bg-white rounded-2xl p-4 border border-[#ebe8dd]">
-                <div className="flex items-center gap-2 text-[#4ecef5] mb-1"><MapPin size={16} /><span className="text-xs font-bold uppercase tracking-widest">Địa điểm</span></div>
+              <div className="bg-white rounded-2xl p-4 border border-[#f0ede6]">
+                <div className="flex items-center gap-2 text-[#4ecef5] mb-1">
+                  <MapPin size={16} />
+                  <span className="text-xs font-bold uppercase tracking-widest">
+                    {lng === 'vi' ? 'Địa điểm' : 'Location'}
+                  </span>
+                </div>
                 <p className="font-bold text-[#243d91] text-sm">{event.location}</p>
                 <p className="text-[#243d91]/60 text-xs">{event.locationType}</p>
               </div>
             </div>
 
             {/* Description */}
-            <div className="bg-white rounded-2xl p-5 border border-[#ebe8dd]">
-              <h3 className="font-bold text-[#243d91] mb-2">Mô tả</h3>
+            <div className="bg-white rounded-2xl p-5 border border-[#f0ede6]">
+              <h3 className="font-bold text-[#243d91] mb-2">
+                {lng === 'vi' ? 'Mô tả' : 'Description'}
+              </h3>
               <p className="text-[#243d91]/70 text-sm leading-relaxed">{event.description}</p>
             </div>
 
             {/* Schedule */}
-            <div className="bg-white rounded-2xl p-5 border border-[#ebe8dd]">
-              <h3 className="font-bold text-[#243d91] mb-4">Lịch trình trải nghiệm</h3>
+            <div className="bg-white rounded-2xl p-5 border border-[#f0ede6]">
+              <h3 className="font-bold text-[#243d91] mb-4">{t('schedule')}</h3>
               <div className="space-y-3">
                 {event.schedule.map((item, i) => (
                   <div key={i} className="flex items-start gap-3">
@@ -126,39 +179,48 @@ export default function EventDetailView() {
 
           {/* RIGHT - Booking */}
           <div className="lg:col-span-2">
-            <div className="sticky top-24 bg-white rounded-2xl border border-[#ebe8dd] shadow-lg shadow-[#243d91]/5 overflow-hidden">
+            <div className="sticky top-24 bg-white rounded-2xl border border-[#f0ede6] shadow-lg shadow-[#243d91]/5 overflow-hidden">
               {/* Price header */}
               <div className="bg-gradient-to-r from-[#243d91] to-[#243d91]/80 text-white p-5">
-                <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-1">Giá vé</p>
-                <p className="font-display font-bold text-3xl">{fmt(event.price)}<span className="text-lg font-sans font-normal text-white/60">/người</span></p>
+                <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-1">
+                  {lng === 'vi' ? 'Giá vé' : 'Ticket price'}
+                </p>
+                <p className="font-display font-bold text-3xl">
+                  {fmt(event.price)}
+                  <span className="text-lg font-sans font-normal text-white/60">
+                    /{lng === 'vi' ? 'người' : 'person'}
+                  </span>
+                </p>
               </div>
 
               {step === 'info' && (
                 <div className="p-5 space-y-5">
                   {/* Qty */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-[#243d91]/60 mb-2">Số người tham gia</label>
-                    <div className="flex items-center justify-between bg-[#ebe8dd]/50 rounded-xl p-2">
+                    <label className="block text-xs font-bold uppercase tracking-widest text-[#243d91]/60 mb-2">
+                      {t('numPeople')}
+                    </label>
+                    <div className="flex items-center justify-between bg-[#f0ede6]/50 rounded-xl p-2">
                       <button onClick={() => setQty(Math.max(1, qty - 1))} className="w-9 h-9 bg-white rounded-lg flex items-center justify-center shadow-sm hover:bg-[#e8539e] hover:text-white transition-all"><Minus size={16} /></button>
                       <span className="font-display font-bold text-2xl text-[#243d91]">{qty}</span>
                       <button onClick={() => setQty(Math.min(event.maxAttendees, qty + 1))} className="w-9 h-9 bg-white rounded-lg flex items-center justify-center shadow-sm hover:bg-[#4ecef5] hover:text-white transition-all"><Plus size={16} /></button>
                     </div>
                     {qty >= 2 && (
                       <p className="mt-2 text-xs font-bold text-[#e8539e] bg-[#e8539e]/10 px-3 py-2 rounded-lg flex items-center gap-1.5">
-                        <Sparkles size={12} /> Combo {qty} người — giảm 10%!
+                        <Sparkles size={12} />
+                        {lng === 'vi' ? `Combo ${qty} người — giảm 10%!` : `${qty}-person combo — 10% off!`}
                       </p>
                     )}
                   </div>
 
                   {/* Add-ons */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-[#243d91]/60 mb-2">Dịch vụ thêm</label>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-[#243d91]/60 mb-2">
+                      {t('addons')}
+                    </label>
                     <div className="space-y-2">
-                      {[
-                        { id: 'instax', label: '📸 Ảnh Instax lấy liền', price: 50000, val: instax, set: setInstax },
-                        { id: 'key', label: '🗝 Móc khoá TDL', price: 85000, val: keychain, set: setKeychain },
-                      ].map((a) => (
-                        <label key={a.id} className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all ${a.val ? 'border-[#e8539e] bg-[#e8539e]/5' : 'border-[#ebe8dd] hover:border-[#4ecef5]'}`}>
+                      {addons.map((a) => (
+                        <label key={a.id} className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all ${a.val ? 'border-[#e8539e] bg-[#e8539e]/5' : 'border-[#f0ede6] hover:border-[#4ecef5]'}`}>
                           <div className="flex items-center gap-2">
                             <input type="checkbox" className="accent-[#e8539e] w-4 h-4" checked={a.val} onChange={(e) => a.set(e.target.checked)} />
                             <span className="text-sm font-bold text-[#243d91]">{a.label}</span>
@@ -170,12 +232,16 @@ export default function EventDetailView() {
                   </div>
 
                   {/* Price breakdown */}
-                  <div className="border-t border-[#ebe8dd] pt-4 space-y-2 text-sm">
-                    <div className="flex justify-between text-[#243d91]/60"><span>Tạm tính ({qty} vé)</span><span>{fmt(basePrice)}</span></div>
-                    {discount > 0 && <div className="flex justify-between text-[#e8539e]"><span>Ưu đãi combo</span><span>-{fmt(discount)}</span></div>}
-                    {addons > 0 && <div className="flex justify-between text-[#4ecef5]"><span>Dịch vụ thêm</span><span>+{fmt(addons)}</span></div>}
-                    <div className="flex justify-between font-display font-bold text-lg text-[#243d91] border-t border-dashed border-[#ebe8dd] pt-2">
-                      <span>Tổng cộng</span><span className="text-[#e8539e]">{fmt(total)}</span>
+                  <div className="border-t border-[#f0ede6] pt-4 space-y-2 text-sm">
+                    <div className="flex justify-between text-[#243d91]/60">
+                      <span>{lng === 'vi' ? `Tạm tính (${qty} vé)` : `Subtotal (${qty} ticket${qty > 1 ? 's' : ''})`}</span>
+                      <span>{fmt(basePrice)}</span>
+                    </div>
+                    {discount > 0 && <div className="flex justify-between text-[#e8539e]"><span>{lng === 'vi' ? 'Ưu đãi combo' : 'Combo discount'}</span><span>-{fmt(discount)}</span></div>}
+                    {addonCost > 0 && <div className="flex justify-between text-[#4ecef5]"><span>{lng === 'vi' ? 'Dịch vụ thêm' : 'Add-ons'}</span><span>+{fmt(addonCost)}</span></div>}
+                    <div className="flex justify-between font-display font-bold text-lg text-[#243d91] border-t border-dashed border-[#f0ede6] pt-2">
+                      <span>{lng === 'vi' ? 'Tổng cộng' : 'Total'}</span>
+                      <span className="text-[#e8539e]">{fmt(total)}</span>
                     </div>
                   </div>
 
@@ -184,19 +250,20 @@ export default function EventDetailView() {
                     disabled={event.status === 'Sold Out'}
                     className="w-full py-3.5 bg-[#e8539e] text-white font-bold rounded-xl hover:bg-[#e8539e]/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-[#e8539e]/30 flex items-center justify-center gap-2"
                   >
-                    {event.status === 'Sold Out' ? 'Hết vé' : (<><span>Tiến hành đặt vé</span><ChevronRight size={18} /></>)}
+                    {event.status === 'Sold Out'
+                      ? (lng === 'vi' ? 'Hết vé' : 'Sold Out')
+                      : (<><span>{t('getTickets')}</span><ChevronRight size={18} /></>)
+                    }
                   </button>
                 </div>
               )}
 
               {step === 'pay' && (
                 <form className="p-5 space-y-4" onSubmit={(e) => { e.preventDefault(); setStep('done'); }}>
-                  <h3 className="font-bold text-[#243d91]">Thông tin người đặt</h3>
-                  {[
-                    { key: 'name', label: 'Họ và tên', type: 'text', placeholder: 'Nguyễn Văn A' },
-                    { key: 'email', label: 'Email nhận vé', type: 'email', placeholder: 'email@example.com' },
-                    { key: 'phone', label: 'Số điện thoại', type: 'tel', placeholder: '0912 345 678' },
-                  ].map((f) => (
+                  <h3 className="font-bold text-[#243d91]">
+                    {lng === 'vi' ? 'Thông tin người đặt' : 'Booking information'}
+                  </h3>
+                  {payFields.map((f) => (
                     <div key={f.key}>
                       <label className="block text-xs font-bold uppercase text-[#243d91]/60 mb-1">{f.label}</label>
                       <input
@@ -205,7 +272,7 @@ export default function EventDetailView() {
                         placeholder={f.placeholder}
                         value={form[f.key as keyof typeof form]}
                         onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
-                        className="w-full px-4 py-2.5 rounded-xl border-2 border-[#ebe8dd] text-sm font-semibold text-[#243d91] outline-none focus:border-[#e8539e] transition-all bg-[#ebe8dd]/30"
+                        className="w-full px-4 py-2.5 rounded-xl border-2 border-[#f0ede6] text-sm font-semibold text-[#243d91] outline-none focus:border-[#e8539e] transition-all bg-[#f0ede6]/30"
                       />
                     </div>
                   ))}
@@ -214,18 +281,20 @@ export default function EventDetailView() {
                   <div className="bg-[#243d91] rounded-xl p-4 text-white flex items-center gap-3">
                     <CreditCard size={20} className="text-[#4ecef5] shrink-0" />
                     <div>
-                      <p className="text-xs font-bold text-white/60 mb-0.5">Thanh toán qua</p>
+                      <p className="text-xs font-bold text-white/60 mb-0.5">
+                        {lng === 'vi' ? 'Thanh toán qua' : 'Payment via'}
+                      </p>
                       <p className="font-bold text-sm">VNPay / Momo / QR Bank</p>
                     </div>
                     <span className="ml-auto font-display font-bold text-[#e8539e]">{fmt(total)}</span>
                   </div>
 
                   <div className="flex gap-3">
-                    <button type="button" onClick={() => setStep('info')} className="flex-1 py-3 rounded-xl bg-[#ebe8dd] text-[#243d91] font-bold text-sm">
-                      Quay lại
+                    <button type="button" onClick={() => setStep('info')} className="flex-1 py-3 rounded-xl bg-[#f0ede6] text-[#243d91] font-bold text-sm">
+                      {lng === 'vi' ? 'Quay lại' : 'Back'}
                     </button>
                     <button type="submit" className="flex-[2] py-3 rounded-xl bg-[#e8539e] text-white font-bold text-sm shadow-lg shadow-[#e8539e]/30">
-                      Xác nhận & Thanh toán
+                      {lng === 'vi' ? 'Xác nhận & Thanh toán' : t('payNow')}
                     </button>
                   </div>
                 </form>

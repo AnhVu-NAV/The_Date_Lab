@@ -8,6 +8,7 @@ import {
 import Chatbot from './Chatbot';
 import TarotModal from './TarotModal';
 import Logo from '../assets/Logo/2.png';
+import { useLanguage } from '../i18n';
 
 interface LayoutProps {
   isAuthenticated: boolean;
@@ -19,6 +20,7 @@ interface LayoutProps {
 export default function Layout({ isAuthenticated, setIsAuthenticated, userRole, setUserRole }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { lng, setLng, t } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [tarotOpen, setTarotOpen] = useState(false);
 
@@ -29,9 +31,9 @@ export default function Layout({ isAuthenticated, setIsAuthenticated, userRole, 
   };
 
   const navItems = [
-    { label: 'Sự kiện', path: '/', icon: <Compass size={14} /> },
-    { label: 'Quiz', path: '/quiz', icon: <Sparkles size={14} /> },
-    { label: 'Kho kỷ niệm', path: '/vault', icon: <Lock size={14} /> },
+    { label: t('navEvents'), path: '/', icon: <Compass size={14} /> },
+    { label: t('navFindVibe'), path: '/quiz', icon: <Sparkles size={14} /> },
+    { label: t('navVault'), path: '/vault', icon: <Lock size={14} /> },
   ];
 
   return (
@@ -41,7 +43,7 @@ export default function Layout({ isAuthenticated, setIsAuthenticated, userRole, 
         <nav className="max-w-7xl mx-auto bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg shadow-[#243d91]/5 border border-white px-4 md:px-6 py-3 flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2.5 shrink-0">
-            <div className="w-10 h-10 rounded-xl overflow-hidden bg-white border-2 border-[#ebe8dd] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl overflow-hidden bg-white border-2 border-[#f0ede6] flex items-center justify-center">
               <img src={Logo} alt="TDL Logo" className="w-full h-full object-contain" />
             </div>
             <span className="font-display font-bold text-lg text-[#e8539e]">The Date Lab</span>
@@ -56,7 +58,7 @@ export default function Layout({ isAuthenticated, setIsAuthenticated, userRole, 
                 className={`flex items-center gap-1.5 text-sm font-bold px-3.5 py-2 rounded-xl transition-all ${
                   location.pathname === item.path
                     ? 'bg-[#e8539e]/10 text-[#e8539e]'
-                    : 'text-[#243d91]/60 hover:text-[#243d91] hover:bg-[#ebe8dd]/60'
+                    : 'text-[#243d91]/60 hover:text-[#243d91] hover:bg-[#f0ede6]/80'
                 }`}
               >
                 {item.icon}
@@ -66,15 +68,25 @@ export default function Layout({ isAuthenticated, setIsAuthenticated, userRole, 
             {/* Tarot button */}
             <button
               onClick={() => setTarotOpen(true)}
-              className="flex items-center gap-1.5 text-sm font-bold px-3.5 py-2 rounded-xl text-[#243d91]/60 hover:text-[#243d91] hover:bg-[#ebe8dd]/60 transition-all"
+              className="flex items-center gap-1.5 text-sm font-bold px-3.5 py-2 rounded-xl text-[#243d91]/60 hover:text-[#243d91] hover:bg-[#f0ede6]/80 transition-all"
             >
               <span className="text-base leading-none">✦</span>
-              <span>Tarot</span>
+              <span>{t('navTarot')}</span>
             </button>
           </div>
 
           {/* Actions */}
           <div className="flex items-center gap-2">
+            {/* Language toggle */}
+            <button
+              onClick={() => setLng(lng === 'vi' ? 'en' : 'vi')}
+              className="hidden md:flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl border-2 border-[#f0ede6] text-[#243d91]/60 hover:border-[#e8539e]/30 hover:text-[#243d91] transition-all bg-white/60"
+              title="Switch language"
+            >
+              <span className="text-base leading-none">{lng === 'vi' ? '🇻🇳' : '🇺🇸'}</span>
+              <span>{lng === 'vi' ? 'VI' : 'EN'}</span>
+            </button>
+
             {isAuthenticated ? (
               <>
                 <button
@@ -82,11 +94,11 @@ export default function Layout({ isAuthenticated, setIsAuthenticated, userRole, 
                   className={`hidden md:flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-xl transition-all ${
                     location.pathname === '/dashboard'
                       ? 'bg-[#243d91] text-white'
-                      : 'bg-[#ebe8dd] text-[#243d91] hover:bg-[#243d91]/10'
+                      : 'bg-[#f0ede6] text-[#243d91] hover:bg-[#243d91]/10'
                   }`}
                 >
                   {userRole === 'admin' ? <Shield size={16} /> : <User size={16} />}
-                  {userRole === 'admin' ? 'Admin' : 'Tài khoản'}
+                  {userRole === 'admin' ? 'Admin' : t('navDashboard')}
                 </button>
                 <button
                   onClick={handleLogout}
@@ -100,13 +112,13 @@ export default function Layout({ isAuthenticated, setIsAuthenticated, userRole, 
                 to="/login"
                 className="hidden md:flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-xl bg-[#e8539e] text-white hover:bg-[#e8539e]/90 transition-all shadow-md shadow-[#e8539e]/25"
               >
-                <LogIn size={15} /> Đăng nhập
+                <LogIn size={15} /> {t('login')}
               </Link>
             )}
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden w-10 h-10 rounded-xl bg-[#ebe8dd] flex items-center justify-center text-[#243d91]"
+              className="md:hidden w-10 h-10 rounded-xl bg-[#f0ede6] flex items-center justify-center text-[#243d91]"
             >
               {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
@@ -120,7 +132,7 @@ export default function Layout({ isAuthenticated, setIsAuthenticated, userRole, 
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              className="md:hidden max-w-7xl mx-auto mt-2 bg-white rounded-2xl shadow-xl border border-[#ebe8dd] p-3 flex flex-col gap-1"
+              className="md:hidden max-w-7xl mx-auto mt-2 bg-white rounded-2xl shadow-xl border border-[#f0ede6] p-3 flex flex-col gap-1"
             >
               {navItems.map((item) => (
                 <Link
@@ -130,7 +142,7 @@ export default function Layout({ isAuthenticated, setIsAuthenticated, userRole, 
                   className={`flex items-center gap-2.5 px-4 py-3 rounded-xl font-bold text-sm transition-all ${
                     location.pathname === item.path
                       ? 'bg-[#e8539e]/10 text-[#e8539e]'
-                      : 'text-[#243d91] hover:bg-[#ebe8dd]'
+                      : 'text-[#243d91] hover:bg-[#f0ede6]'
                   }`}
                 >
                   {item.icon}{item.label}
@@ -138,25 +150,35 @@ export default function Layout({ isAuthenticated, setIsAuthenticated, userRole, 
               ))}
               <button
                 onClick={() => { setTarotOpen(true); setMobileMenuOpen(false); }}
-                className="flex items-center gap-2.5 px-4 py-3 rounded-xl font-bold text-sm text-[#243d91] hover:bg-[#ebe8dd] transition-all"
+                className="flex items-center gap-2.5 px-4 py-3 rounded-xl font-bold text-sm text-[#243d91] hover:bg-[#f0ede6] transition-all"
               >
-                <span className="text-base leading-none">✦</span> Khám phá Tarot
+                <span className="text-base leading-none">✦</span> {t('navTarot')}
               </button>
-              <div className="border-t border-[#ebe8dd] my-1" />
+
+              {/* Language toggle mobile */}
+              <button
+                onClick={() => { setLng(lng === 'vi' ? 'en' : 'vi'); }}
+                className="flex items-center gap-2.5 px-4 py-3 rounded-xl font-bold text-sm text-[#243d91] hover:bg-[#f0ede6] transition-all"
+              >
+                <span className="text-lg">{lng === 'vi' ? '🇻🇳' : '🇺🇸'}</span>
+                {lng === 'vi' ? 'Chuyển sang English' : 'Switch to Tiếng Việt'}
+              </button>
+
+              <div className="border-t border-[#f0ede6] my-1" />
               {isAuthenticated ? (
                 <>
                   <button
                     onClick={() => { navigate('/dashboard'); setMobileMenuOpen(false); }}
-                    className="flex items-center gap-2.5 px-4 py-3 rounded-xl font-bold text-sm text-[#243d91] hover:bg-[#ebe8dd] transition-all"
+                    className="flex items-center gap-2.5 px-4 py-3 rounded-xl font-bold text-sm text-[#243d91] hover:bg-[#f0ede6] transition-all"
                   >
                     {userRole === 'admin' ? <Shield size={16} /> : <User size={16} />}
-                    {userRole === 'admin' ? 'Admin Panel' : 'Tài khoản'}
+                    {userRole === 'admin' ? 'Admin Panel' : t('navDashboard')}
                   </button>
                   <button
                     onClick={handleLogout}
                     className="flex items-center gap-2.5 px-4 py-3 rounded-xl font-bold text-sm text-red-400 hover:bg-red-50 transition-all"
                   >
-                    <LogOut size={16} /> Đăng xuất
+                    <LogOut size={16} /> {lng === 'vi' ? 'Đăng xuất' : 'Log out'}
                   </button>
                 </>
               ) : (
@@ -165,7 +187,7 @@ export default function Layout({ isAuthenticated, setIsAuthenticated, userRole, 
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center gap-2 justify-center px-4 py-3 rounded-xl font-bold text-sm bg-[#e8539e] text-white"
                 >
-                  <LogIn size={15} /> Đăng nhập / Đăng ký
+                  <LogIn size={15} /> {t('login')} / {t('signup')}
                 </Link>
               )}
             </motion.div>
@@ -188,18 +210,26 @@ export default function Layout({ isAuthenticated, setIsAuthenticated, userRole, 
               </div>
               <span className="font-display font-bold text-xl text-[#e8539e]">The Date Lab</span>
             </div>
-            <p className="text-white/50 text-sm leading-relaxed">Khơi nguồn cảm hứng, lưu giữ kỷ niệm. Nơi mỗi buổi hẹn đều trở thành tác phẩm.</p>
+            <p className="text-white/50 text-sm leading-relaxed">
+              {lng === 'vi'
+                ? 'Khơi nguồn cảm hứng, lưu giữ kỷ niệm. Nơi mỗi buổi hẹn đều trở thành tác phẩm.'
+                : 'Spark creativity, preserve memories. Where every date becomes a masterpiece.'}
+            </p>
           </div>
           <div>
-            <h4 className="font-bold uppercase text-xs tracking-widest text-[#4ecef5] mb-4">Khám phá</h4>
+            <h4 className="font-bold uppercase text-xs tracking-widest text-[#4ecef5] mb-4">
+              {lng === 'vi' ? 'Khám phá' : 'Explore'}
+            </h4>
             <div className="flex flex-col gap-2.5 text-sm text-white/50">
-              <Link to="/" className="hover:text-white transition-colors">Sự kiện & Workshop</Link>
-              <Link to="/quiz" className="hover:text-white transition-colors">Quiz cá nhân hoá</Link>
-              <Link to="/vault" className="hover:text-white transition-colors">Kho kỷ niệm</Link>
+              <Link to="/" className="hover:text-white transition-colors">{t('navEvents')}</Link>
+              <Link to="/quiz" className="hover:text-white transition-colors">{t('navFindVibe')}</Link>
+              <Link to="/vault" className="hover:text-white transition-colors">{t('navVault')}</Link>
             </div>
           </div>
           <div>
-            <h4 className="font-bold uppercase text-xs tracking-widest text-[#4ecef5] mb-4">Liên hệ</h4>
+            <h4 className="font-bold uppercase text-xs tracking-widest text-[#4ecef5] mb-4">
+              {lng === 'vi' ? 'Liên hệ' : 'Contact'}
+            </h4>
             <div className="flex flex-col gap-2.5 text-sm text-white/50">
               <span className="flex items-center gap-2"><MapPin size={13} className="text-[#4ecef5]" /> ĐH FPT Hoà Lạc, Hà Nội</span>
               <span className="flex items-center gap-2"><Mail size={13} className="text-[#4ecef5]" /> hello@thedatelab.vn</span>

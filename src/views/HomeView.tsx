@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { getMockEvents } from '../data';
 import { Event } from '../types';
 import MascotHero from '../assets/MASCOT/nu1-05.png';
+import { useLanguage } from '../i18n';
 
 function StatusBadge({ status }: { status: Event['status'] }) {
   if (status === 'Available')
@@ -87,6 +88,7 @@ function EventCard({ event, onClick }: { event: Event; onClick: () => void; key?
 
 export default function HomeView() {
   const navigate = useNavigate();
+  const { lng, t } = useLanguage();
   const events = getMockEvents('vi');
   const [search, setSearch] = useState('');
   const [relFilter, setRelFilter] = useState('');
@@ -98,6 +100,23 @@ export default function HomeView() {
       (relFilter === '' || e.forWho.includes(relFilter))
     );
   });
+
+  // Hero content by language
+  const hero = {
+    badge: lng === 'vi' ? 'The Date Lab · Hà Nội' : 'The Date Lab · Hanoi',
+    title1: lng === 'vi' ? 'Khám phá workshop' : 'Discover workshops',
+    title2: lng === 'vi' ? 'dành riêng cho bạn' : 'made just for you',
+    desc: lng === 'vi'
+      ? 'Từ làm gốm đến chế tác nước hoa — mỗi buổi hẹn tại The Date Lab đều là một kỷ niệm đáng nhớ.'
+      : 'From pottery to perfume crafting — every date at The Date Lab becomes an unforgettable memory.',
+    cta1: t('btnFindEvents'),
+    cta2: lng === 'vi' ? 'Xem sự kiện' : 'Browse events',
+    stats: [
+      { label: lng === 'vi' ? 'Workshop mỗi tháng' : 'Workshops/month', value: '45+' },
+      { label: lng === 'vi' ? 'Thành viên' : 'Members', value: '1,200+' },
+      { label: lng === 'vi' ? 'Đánh giá tích cực' : 'Positive reviews', value: '98%' },
+    ],
+  };
 
   return (
     <div className="space-y-8">
@@ -116,35 +135,31 @@ export default function HomeView() {
         {/* Content */}
         <div className="relative z-10 flex items-end justify-between w-full gap-6">
           <div className="max-w-xl">
-            <p className="text-[#4ecef5] text-xs font-bold uppercase tracking-widest mb-3">The Date Lab · Hà Nội</p>
+            <p className="text-[#4ecef5] text-xs font-bold uppercase tracking-widest mb-3">{hero.badge}</p>
             <h1 className="font-display font-bold text-3xl md:text-5xl text-white leading-tight mb-4">
-              Khám phá workshop<br />
-              <span className="text-[#e8539e]">dành riêng cho bạn</span>
+              {hero.title1}<br />
+              <span className="text-[#e8539e]">{hero.title2}</span>
             </h1>
             <p className="text-white/60 text-sm md:text-base leading-relaxed mb-8 max-w-md">
-              Từ làm gốm đến chế tác nước hoa — mỗi buổi hẹn tại The Date Lab đều là một kỷ niệm đáng nhớ.
+              {hero.desc}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 mb-8">
               <button
                 onClick={() => navigate('/quiz')}
                 className="flex items-center justify-center gap-2 px-6 py-3.5 bg-[#e8539e] text-white font-bold rounded-xl hover:bg-[#e8539e]/90 transition-all shadow-lg shadow-[#e8539e]/30"
               >
-                <Sparkles size={16} /> Tìm workshop phù hợp
+                <Sparkles size={16} /> {hero.cta1}
               </button>
               <button
                 onClick={() => document.getElementById('events-section')?.scrollIntoView({ behavior: 'smooth' })}
                 className="flex items-center justify-center gap-2 px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-all border border-white/20"
               >
-                Xem sự kiện <ArrowRight size={16} />
+                {hero.cta2} <ArrowRight size={16} />
               </button>
             </div>
             {/* Stats row */}
             <div className="flex flex-wrap gap-6">
-              {[
-                { label: 'Workshop mỗi tháng', value: '45+' },
-                { label: 'Thành viên', value: '1,200+' },
-                { label: 'Đánh giá tích cực', value: '98%' },
-              ].map((s) => (
+              {hero.stats.map((s) => (
                 <div key={s.label}>
                   <p className="font-display font-bold text-2xl text-white">{s.value}</p>
                   <p className="text-xs text-white/40 font-semibold">{s.label}</p>
@@ -159,7 +174,7 @@ export default function HomeView() {
               src={MascotHero}
               alt="TDL Mascot"
               className="h-72 w-auto object-contain drop-shadow-2xl"
-              style={{ filter: 'drop-shadow(0 8px 32px rgba(237,24,132,0.3))' }}
+              style={{ filter: 'drop-shadow(0 8px 32px rgba(232,83,158,0.3))' }}
             />
           </div>
         </div>
@@ -173,7 +188,7 @@ export default function HomeView() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm sự kiện, workshop..."
+            placeholder={lng === 'vi' ? 'Tìm sự kiện, workshop...' : t('searchPlaceholder')}
             className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-[#f0ede6]/60 text-sm font-semibold text-[#243d91] placeholder-[#243d91]/30 outline-none focus:bg-[#f0ede6]"
           />
         </div>
