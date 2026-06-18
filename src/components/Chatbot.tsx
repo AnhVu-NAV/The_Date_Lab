@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Send, Minimize2 } from 'lucide-react';
 import MascotImg from '../assets/MASCOT/nam2-05.png';
 import { useLanguage } from '../i18n';
+import { useAuth } from '../context/AuthContext';
 
 interface Msg { role: 'user' | 'bot'; text: string; }
 
@@ -18,11 +19,28 @@ const MOCK_RESPONSES: Record<string, string> = {
 
 export default function Chatbot() {
   const { lng, t } = useLanguage();
+  const { token } = useAuth();
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([{ role: 'bot', text: t('botGreeting') }]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Parse markdown links [text](url)
+  const renderMessageText = (text: string) => {
+    const parts = text.split(/(\[.*?\]\(.*?\))/g);
+    return parts.map((part, i) => {
+      const match = part.match(/\[(.*?)\]\((.*?)\)/);
+      if (match) {
+        return (
+          <a key={i} href={match[2]} className="underline font-bold text-[#e8539e] hover:text-[#d43c86]">
+            {match[1]}
+          </a>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
 
   // Update greeting when language changes
   useEffect(() => {
@@ -40,11 +58,15 @@ export default function Chatbot() {
     setLoading(true);
 
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch('/api/gemini/chatbot', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, context: 'TDL event platform assistant', lng: 'vi' }),
+        headers,
+        body: JSON.stringify({ message: text, context: 'TDL event platform assistant', lng }),
       });
+      if (!res.ok) throw new Error('API failed');
       const data = await res.json();
       setMsgs((p) => [...p, { role: 'bot', text: data.reply }]);
     } catch {
@@ -118,7 +140,7 @@ export default function Chatbot() {
                       ? 'bg-[#e8539e] text-white rounded-br-sm'
                       : 'bg-white text-[#243d91] rounded-bl-sm shadow-sm border border-[#ebe8dd]'
                   }`}>
-                    {m.text}
+                    {renderMessageText(m.text)}
                   </div>
                 </div>
               ))}
