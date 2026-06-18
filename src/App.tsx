@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import Layout from './components/Layout';
 import HomeView from './views/HomeView';
 import QuizView from './views/QuizView';
@@ -18,21 +19,24 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Layout />}>
-        <Route index element={<HomeView />} />
-        <Route path="quiz" element={<QuizView />} />
-        <Route path="event/:id" element={<EventDetailView />} />
-        <Route path="events/:id" element={<EventDetailView />} />
-        <Route path="dashboard" element={
-          <ProtectedRoute><DashboardView /></ProtectedRoute>
-        } />
-        <Route path="vault" element={
-          <ProtectedRoute><VaultView /></ProtectedRoute>
-        } />
-        <Route path="login" element={<AuthView />} />
-        <Route path="register" element={<AuthView />} />
-      </Route>
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<HomeView />} />
+          <Route path="quiz" element={<QuizView />} />
+          <Route path="event/:id" element={<EventDetailView />} />
+          <Route path="events/:id" element={<EventDetailView />} />
+          <Route path="dashboard" element={
+            <ProtectedRoute><DashboardView /></ProtectedRoute>
+          } />
+          <Route path="vault" element={
+            <ProtectedRoute><VaultView /></ProtectedRoute>
+          } />
+          <Route path="login" element={<AuthView />} />
+          <Route path="register" element={<AuthView />} />
+        </Route>
+      </Routes>
+      <Analytics />
+    </>
   );
 }
