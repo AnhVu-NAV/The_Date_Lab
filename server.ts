@@ -23,6 +23,10 @@ import adminBankId from './api_handlers/admin/bank/[id]_main.ts';
 import adminBankActivate from './api_handlers/admin/bank/[id]/activate.ts';
 import adminAddonsIndex from './api_handlers/admin/addons_main.ts';
 import adminAddonsId from './api_handlers/admin/addons/[id].ts';
+import adminSettings from './api_handlers/admin/settings.ts';
+import settingsIndex from './api_handlers/settings/index.ts';
+import geminiChatbot from './api_handlers/gemini/chatbot.ts';
+import geminiQuiz from './api_handlers/gemini/quiz.ts';
 
 async function startServer() {
   const app = express();
@@ -59,8 +63,14 @@ async function startServer() {
   app.all('/api/tarot', handle(tarotIndex));
   app.all('/api/tarot/:id', handle(tarotId));
 
+  app.all('/api/settings', handle(settingsIndex));
+
+  app.all('/api/gemini/chatbot', handle(geminiChatbot));
+  app.all('/api/gemini/quiz', handle(geminiQuiz));
+
   app.all('/api/admin/stats', handle(adminStats));
   app.all('/api/admin/users', handle(adminUsers));
+  app.all('/api/admin/settings', handle(adminSettings));
   app.all('/api/admin/bank', handle(adminBankIndex));
   app.all('/api/admin/bank/:id', handle(adminBankId));
   app.all('/api/admin/bank/:id/activate', handle(adminBankActivate));

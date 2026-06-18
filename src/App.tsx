@@ -23,6 +23,7 @@ export default function App() {
         <Route index element={<HomeView />} />
         <Route path="quiz" element={<QuizView />} />
         <Route path="event/:id" element={<EventDetailView />} />
+        <Route path="events/:id" element={<EventDetailView />} />
         <Route path="dashboard" element={
           <ProtectedRoute><DashboardView /></ProtectedRoute>
         } />

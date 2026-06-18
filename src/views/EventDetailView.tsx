@@ -197,7 +197,7 @@ export default function EventDetailView() {
 
           {/* RIGHT — Booking */}
           <div className="lg:col-span-2">
-            <div className="sticky top-24 bg-white rounded-2xl border border-[#f0ede6] shadow-lg shadow-[#243d91]/5 overflow-hidden">
+            <div id="booking" className="sticky top-24 bg-white rounded-2xl border border-[#f0ede6] shadow-lg shadow-[#243d91]/5 overflow-hidden">
               <div className="bg-gradient-to-r from-[#243d91] to-[#243d91]/80 text-white p-5">
                 <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-1">{lng === 'vi' ? 'Giá vé' : 'Ticket price'}</p>
                 <p className="font-display font-bold text-3xl">{fmt(event.price)}<span className="text-lg font-sans font-normal text-white/60">/{lng === 'vi' ? 'người' : 'person'}</span></p>
