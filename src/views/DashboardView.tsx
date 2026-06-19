@@ -11,6 +11,7 @@ import { useLanguage } from '../i18n';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import Logo from '../assets/Logo/2.png';
 
 // ─── Shared Form Modal ───────────────────────────────────────────────────────
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
@@ -1252,8 +1253,8 @@ export default function DashboardView() {
         <div className="w-64 bg-[#243d91] text-white flex flex-col shrink-0">
           <div className="p-6">
             <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-display font-bold text-xl text-[#e8539e]">
-                TDL
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center overflow-hidden">
+                <img src={Logo} alt="TDL Logo" className="w-full h-full object-contain" />
               </div>
               <div>
                 <h1 className="font-display font-bold text-lg leading-tight">Admin<br/><span className="text-[#4ecef5]">Panel</span></h1>
