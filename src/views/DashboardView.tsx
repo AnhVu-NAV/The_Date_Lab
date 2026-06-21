@@ -454,6 +454,7 @@ function AdminTickets({ token }: { token: string }) {
 function AdminTarot({ token }: { token: string }) {
   const { lng } = useLanguage();
   const [cards, setCards] = useState<any[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editCard, setEditCard] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
@@ -463,7 +464,10 @@ function AdminTarot({ token }: { token: string }) {
   const [form, setForm] = useState(emptyForm);
 
   const refresh = () => api.getTarotCards().then(setCards);
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => { 
+    refresh(); 
+    api.getEvents().then(setEvents).catch(console.error);
+  }, []);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -565,6 +569,21 @@ function AdminTarot({ token }: { token: string }) {
                 <FormField label="Vibe (VI)"><input className={inputCls} value={form.vibeVi} onChange={e => setForm(f => ({ ...f, vibeVi: e.target.value }))} /></FormField>
                 <FormField label="Vibe (EN)"><input className={inputCls} value={form.vibeEn} onChange={e => setForm(f => ({ ...f, vibeEn: e.target.value }))} /></FormField>
               </div>
+              <FormField label="Chọn nhanh sự kiện hiện có (Tự động điền 2 ô dưới)">
+                <select 
+                  className={inputCls} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (val) {
+                      setForm(f => ({ ...f, eventSuggestionVi: val, eventSuggestionEn: val }));
+                      e.target.value = ""; // Reset select after picking
+                    }
+                  }}
+                >
+                  <option value="">-- Bấm để chọn --</option>
+                  {events.map(ev => <option key={ev.id} value={ev.title}>{ev.title}</option>)}
+                </select>
+              </FormField>
               <div className="grid grid-cols-2 gap-3">
                 <FormField label="Gợi ý sự kiện (VI)"><input className={inputCls} value={form.eventSuggestionVi} onChange={e => setForm(f => ({ ...f, eventSuggestionVi: e.target.value }))} /></FormField>
                 <FormField label="Gợi ý sự kiện (EN)"><input className={inputCls} value={form.eventSuggestionEn} onChange={e => setForm(f => ({ ...f, eventSuggestionEn: e.target.value }))} /></FormField>
