@@ -207,8 +207,9 @@ export default function TarotModal({ isOpen, onClose }: TarotModalProps) {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
+                      className="text-white"
                     >
-                      <ComingSoon featureName={lng === 'vi' ? 'Khám phá Tarot' : 'Daily Tarot'} />
+                      <ComingSoon title={lng === 'vi' ? 'Khám phá Tarot' : 'Daily Tarot'} />
                     </motion.div>
                   ) : (
                     <>

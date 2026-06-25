@@ -53,7 +53,7 @@ export default function VaultView() {
     .finally(() => setLoading(false));
   }, [token]);
 
-  const uniqueEvents = Array.from(new Map(myTickets.filter(t => t.paymentStatus === 'paid').map(t => [t.eventId, t])).values());
+  const uniqueEvents = Array.from(new Map(myTickets.filter(t => t.paymentStatus === 'paid').map(t => [t.eventId, t])).values()) as any[];
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

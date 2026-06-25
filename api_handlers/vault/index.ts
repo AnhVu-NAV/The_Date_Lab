@@ -24,17 +24,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const adminUsersList = await db.select({ id: users.id }).from(users).where(eq(users.role, 'admin'));
     const adminIds = adminUsersList.map(u => u.id);
 
+    const isAdmin = adminIds.includes(auth.id);
+
     // 3. Build visibility conditions
-    const conditions = [eq(vaultMemories.userId, auth.id)]; // My own photos
-    
-    if (userEventIds.length > 0) {
-      // Public photos from events I attended
-      conditions.push(and(eq(vaultMemories.isPublic, true), inArray(vaultMemories.eventId, userEventIds)));
-    }
-    
-    if (adminIds.length > 0) {
-      // Public photos uploaded by admin
-      conditions.push(and(eq(vaultMemories.isPublic, true), inArray(vaultMemories.userId, adminIds)));
+    const conditions = [];
+    if (!isAdmin) {
+      conditions.push(eq(vaultMemories.userId, auth.id)); // My own photos
+      
+      if (userEventIds.length > 0) {
+        // Public photos from events I attended
+        conditions.push(and(eq(vaultMemories.isPublic, true), inArray(vaultMemories.eventId, userEventIds)));
+      }
+      
+      if (adminIds.length > 0) {
+        // Public photos uploaded by admin
+        conditions.push(and(eq(vaultMemories.isPublic, true), inArray(vaultMemories.userId, adminIds)));
+      }
     }
 
     const memories = await db.select({
@@ -51,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
     .from(vaultMemories)
     .leftJoin(users, eq(vaultMemories.userId, users.id))
-    .where(or(...conditions))
+    .where(isAdmin ? undefined : or(...conditions))
     .orderBy(desc(vaultMemories.createdAt));
 
     return res.json(memories);
