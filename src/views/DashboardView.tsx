@@ -1234,7 +1234,9 @@ function AdminVault({ token }: { token: string }) {
               <p className="text-sm font-bold text-[#243d91]">{mem.eventTitle || 'Không thuộc sự kiện'}</p>
               {mem.caption && <p className="text-xs text-[#243d91]/60 mt-1">{mem.caption}</p>}
               <div className="mt-2 text-[10px] uppercase font-bold text-[#243d91]/40 flex items-center justify-between">
-                <span>By: {mem.userName || 'User'}</span>
+                <span className="flex items-center gap-1">
+                  By: {mem.userRole === 'admin' ? <span className="text-[#e8539e] ml-1 flex items-center gap-1"><Shield size={10} /> TDL Admin</span> : (mem.userName || 'User')}
+                </span>
                 <span className={mem.isPublic ? "text-emerald-500" : "text-red-400"}>{mem.isPublic ? 'Public' : 'Private'}</span>
               </div>
             </div>

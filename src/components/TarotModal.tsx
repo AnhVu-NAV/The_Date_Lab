@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, RefreshCw, Ticket } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
-import { api } from '../lib/api';
+import { api } from '../lib/api';import ComingSoon from './ComingSoon';
 
 interface TarotModalProps {
   isOpen: boolean;
@@ -115,9 +115,11 @@ export default function TarotModal({ isOpen, onClose }: TarotModalProps) {
   const [phase, setPhase] = useState<'intro' | 'flipping' | 'revealed'>('intro');
   const [pickedCard, setPickedCard] = useState<any | null>(null);
   const [cards, setCards] = useState<any[]>(TAROT_CARDS);
+  const [features, setFeatures] = useState<any>(null);
 
-  // Fetch real cards from DB when modal opens
+  // Fetch real cards and features from DB when modal opens
   useEffect(() => {
+    api.getSettings().then(data => setFeatures(data.features || {})).catch(console.error);
     if (isOpen) {
       api.getTarotCards()
         .then(data => { if (data.length > 0) setCards(data); })
@@ -199,7 +201,18 @@ export default function TarotModal({ isOpen, onClose }: TarotModalProps) {
               <div className="px-6 pb-6">
                 <AnimatePresence mode="wait">
 
-                  {/* INTRO */}
+                  {features && features.tarot === false ? (
+                    <motion.div
+                      key="coming-soon"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
+                      <ComingSoon featureName={lng === 'vi' ? 'Khám phá Tarot' : 'Daily Tarot'} />
+                    </motion.div>
+                  ) : (
+                    <>
+                      {/* INTRO */}
                   {phase === 'intro' && (
                     <motion.div
                       key="intro"
@@ -323,6 +336,8 @@ export default function TarotModal({ isOpen, onClose }: TarotModalProps) {
                         <RefreshCw size={14} /> {txt.redrawBtn}
                       </button>
                     </motion.div>
+                  )}
+                    </>
                   )}
 
                 </AnimatePresence>
