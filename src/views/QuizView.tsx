@@ -4,6 +4,7 @@ import { Heart, Users, Star, ArrowRight, RotateCcw, Ticket, Calendar, MapPin } f
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import { api } from '../lib/api';
+import ComingSoon from '../components/ComingSoon';
 
 export default function QuizView() {
   const navigate = useNavigate();
@@ -14,10 +15,16 @@ export default function QuizView() {
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
   const [events, setEvents] = useState<any[]>([]);
+  const [features, setFeatures] = useState<any>(null);
 
   React.useEffect(() => {
+    api.getSettings().then(data => setFeatures(data.features || {})).catch(console.error);
     api.getEvents().then(data => { if (data.length > 0) setEvents(data); }).catch(console.error);
   }, []);
+
+  if (features && features.quiz === false) {
+    return <ComingSoon />;
+  }
 
   // Steps built from t()
   const STEPS = [

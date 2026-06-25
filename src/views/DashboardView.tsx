@@ -572,11 +572,11 @@ function AdminTarot({ token }: { token: string }) {
               <FormField label="Chọn nhanh sự kiện hiện có (Tự động điền 2 ô dưới)">
                 <select 
                   className={inputCls} 
+                  value={events.find(e => e.title === form.eventSuggestionVi)?.title || ""}
                   onChange={e => {
                     const val = e.target.value;
                     if (val) {
                       setForm(f => ({ ...f, eventSuggestionVi: val, eventSuggestionEn: val }));
-                      e.target.value = ""; // Reset select after picking
                     }
                   }}
                 >
@@ -1170,22 +1170,149 @@ function AdminAddons({ token }: { token: string }) {
   );
 }
 
+// ─── Admin: Vault ─────────────────────────────────────────────────────────────
+function AdminVault({ token }: { token: string }) {
+  const { lng } = useLanguage();
+  const [memories, setMemories] = useState<any[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const emptyForm = { imageUrl: '', eventId: '', eventTitle: '', caption: '' };
+  const [form, setForm] = useState(emptyForm);
+
+  const refresh = () => api.getAdminVault(token).then(setMemories);
+  useEffect(() => { 
+    refresh(); 
+    api.getEvents().then(setEvents).catch(console.error);
+  }, [token]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const res = await api.uploadImage(reader.result as string, 'vault', token);
+        setForm(f => ({ ...f, imageUrl: res.url }));
+      } catch { alert('Upload failed'); }
+      finally { setUploading(false); }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = async () => {
+    try {
+      await api.createAdminVaultMemory(form, token);
+      setShowForm(false); setForm(emptyForm);
+      refresh();
+    } catch (err: any) { alert(err.message); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Xóa ảnh này?')) return;
+    await api.deleteAdminVaultMemory(id, token);
+    refresh();
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="font-bold text-lg text-[#243d91]">Quản lý Kho Kỷ Niệm</h3>
+        <button onClick={() => { setForm(emptyForm); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2 bg-[#243d91] text-white text-sm font-bold rounded-xl hover:bg-[#243d91]/90 transition-all">
+          <Plus size={15} /> Thêm ảnh
+        </button>
+      </div>
+
+      <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+        {memories.map(mem => (
+          <div key={mem.id} className="break-inside-avoid rounded-2xl overflow-hidden relative group bg-white border border-[#f0ede6] shadow-sm">
+            <img src={mem.imageUrl} alt="" className="w-full block" />
+            <div className="p-3">
+              <p className="text-sm font-bold text-[#243d91]">{mem.eventTitle || 'Không thuộc sự kiện'}</p>
+              {mem.caption && <p className="text-xs text-[#243d91]/60 mt-1">{mem.caption}</p>}
+              <div className="mt-2 text-[10px] uppercase font-bold text-[#243d91]/40 flex items-center justify-between">
+                <span>By: {mem.userName || 'User'}</span>
+                <span className={mem.isPublic ? "text-emerald-500" : "text-red-400"}>{mem.isPublic ? 'Public' : 'Private'}</span>
+              </div>
+            </div>
+            <button onClick={() => handleDelete(mem.id)} className="absolute top-2 right-2 w-8 h-8 rounded-lg bg-red-50 text-red-400 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all shadow-md">
+              <Trash2 size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <AnimatePresence>
+        {showForm && (
+          <Modal title="Thêm ảnh vào Kho Kỷ Niệm" onClose={() => { setShowForm(false); }}>
+            <div className="space-y-4">
+              <FormField label="Sự kiện (Tùy chọn)">
+                <select 
+                  className={inputCls} 
+                  value={form.eventId}
+                  onChange={e => {
+                    const id = e.target.value;
+                    const ev = events.find(x => x.id === id);
+                    setForm(f => ({ ...f, eventId: id, eventTitle: ev ? ev.title : '' }));
+                  }}
+                >
+                  <option value="">-- Không chọn --</option>
+                  {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
+                </select>
+              </FormField>
+              <FormField label="Tên sự kiện / Folder (Nhập tay)">
+                <input className={inputCls} value={form.eventTitle} onChange={e => setForm(f => ({ ...f, eventTitle: e.target.value }))} placeholder="Workshop 20/10..." />
+              </FormField>
+              <FormField label="Ghi chú (Caption)">
+                <textarea className={`${inputCls} resize-none`} rows={2} value={form.caption} onChange={e => setForm(f => ({ ...f, caption: e.target.value }))} />
+              </FormField>
+              <FormField label="Ảnh">
+                {form.imageUrl && <img src={form.imageUrl} alt="" className="w-full h-32 object-cover rounded-xl mb-2" />}
+                <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="w-full py-2.5 rounded-xl border-2 border-dashed border-[#f0ede6] text-sm font-bold text-[#243d91]/60 hover:border-[#e8539e]/30 transition-all flex items-center justify-center gap-2">
+                  {uploading ? <div className="w-4 h-4 border-2 border-[#e8539e] border-t-transparent rounded-full animate-spin" /> : <Upload size={14} />}
+                  {uploading ? 'Uploading...' : 'Upload ảnh'}
+                </button>
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+              </FormField>
+              <button onClick={handleSave} className="w-full py-3 bg-[#243d91] text-white font-bold rounded-xl hover:bg-[#243d91]/90 transition-all">
+                Đăng ảnh
+              </button>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ─── Admin: Settings ──────────────────────────────────────────────────────────
 function AdminSettings({ token }: { token: string }) {
   const { lng } = useLanguage();
   const [settings, setSettings] = useState<any>({});
+  const [features, setFeatures] = useState<any>({ chatbot: true, quiz: true, vault: true, tarot: true });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    api.getSettings().then(data => setSettings(data.contact_info || {})).catch(console.error);
+    api.getSettings().then(data => {
+      setSettings(data.contact_info || {});
+      setFeatures({
+        chatbot: data.features?.chatbot !== false,
+        quiz: data.features?.quiz !== false,
+        vault: data.features?.vault !== false,
+        tarot: data.features?.tarot !== false,
+      });
+    }).catch(console.error);
   }, []);
 
   const handleSave = async () => {
     setLoading(true);
     setMessage('');
     try {
-      await api.updateSettings({ contact_info: settings }, token);
+      await api.updateSettings({ contact_info: settings, features }, token);
       setMessage(lng === 'vi' ? 'Đã lưu cài đặt' : 'Settings saved');
     } catch (e: any) {
       setMessage(e.message || 'Lỗi lưu cài đặt');
@@ -1215,6 +1342,23 @@ function AdminSettings({ token }: { token: string }) {
           <FormField label="Instagram Link">
             <input value={settings.instagram || ''} onChange={e => setSettings({...settings, instagram: e.target.value})} className={inputCls} placeholder="https://instagram.com/..." />
           </FormField>
+        </div>
+
+      </div>
+      <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#f0ede6]">
+        <h3 className="font-display font-bold text-xl text-[#243d91] mb-6">Bật/Tắt Tính năng</h3>
+        <div className="grid grid-cols-2 gap-4 max-w-xl">
+          {[
+            { id: 'chatbot', label: 'Chatbot' },
+            { id: 'quiz', label: 'Quiz & Vibe' },
+            { id: 'vault', label: 'Kho Kỷ Niệm (Vault)' },
+            { id: 'tarot', label: 'Tarot' },
+          ].map(f => (
+            <label key={f.id} className="flex items-center gap-3 p-4 border-2 border-[#f0ede6] rounded-xl cursor-pointer hover:border-[#e8539e]/30 transition-all">
+              <input type="checkbox" checked={features[f.id]} onChange={e => setFeatures(prev => ({ ...prev, [f.id]: e.target.checked }))} className="w-5 h-5 accent-[#e8539e] cursor-pointer" />
+              <span className="font-bold text-[#243d91] text-sm">{f.label}</span>
+            </label>
+          ))}
         </div>
 
         <div className="mt-8 flex items-center gap-4">
@@ -1253,6 +1397,7 @@ export default function DashboardView() {
     { id: 'bank', label: lng === 'vi' ? 'Ngân hàng' : 'Bank', icon: <Landmark size={18} /> },
     { id: 'addons', label: lng === 'vi' ? 'Add-ons' : 'Add-ons', icon: <ShoppingBag size={18} /> },
     { id: 'users', label: lng === 'vi' ? 'Người dùng' : 'Users', icon: <Users size={18} /> },
+    { id: 'vault', label: lng === 'vi' ? 'Kỷ niệm' : 'Vault', icon: <Camera size={18} /> },
     { id: 'settings', label: lng === 'vi' ? 'Cài đặt' : 'Settings', icon: <Settings size={18} /> },
   ];
 
@@ -1337,6 +1482,7 @@ export default function DashboardView() {
                   {activeTab === 'bank' && <AdminBank token={token} />}
                   {activeTab === 'addons' && <AdminAddons token={token} />}
                   {activeTab === 'users' && <AdminUsers token={token} />}
+                  {activeTab === 'vault' && <AdminVault token={token} />}
                   {activeTab === 'settings' && <AdminSettings token={token} />}
                 </motion.div>
               </AnimatePresence>

@@ -24,6 +24,8 @@ import adminBankActivate from './api_handlers/admin/bank/[id]/activate.ts';
 import adminAddonsIndex from './api_handlers/admin/addons_main.ts';
 import adminAddonsId from './api_handlers/admin/addons/[id].ts';
 import adminSettings from './api_handlers/admin/settings.ts';
+import adminVaultMain from './api_handlers/admin/vault_main.ts';
+import adminVaultId from './api_handlers/admin/vault/[id].ts';
 import settingsIndex from './api_handlers/settings/index.ts';
 import geminiChatbot from './api_handlers/gemini/chatbot.ts';
 import geminiQuiz from './api_handlers/gemini/quiz.ts';
@@ -76,6 +78,8 @@ async function startServer() {
   app.all('/api/admin/bank/:id/activate', handle(adminBankActivate));
   app.all('/api/admin/addons', handle(adminAddonsIndex));
   app.all('/api/admin/addons/:id', handle(adminAddonsId));
+  app.all('/api/admin/vault', handle(adminVaultMain));
+  app.all('/api/admin/vault/:id', handle(adminVaultId));
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

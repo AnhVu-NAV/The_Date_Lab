@@ -104,6 +104,16 @@ export const api = {
     fetch(`${BASE}/api/admin/bank/${id}`, {
       method: 'DELETE', headers: authHeaders(token),
     }).then(r => handleResponse<any>(r)),
+  getAdminVault: (token: string) =>
+    fetch(`${BASE}/api/admin/vault`, { headers: authHeaders(token) }).then(r => handleResponse<any[]>(r)),
+  createAdminVaultMemory: (data: any, token: string) =>
+    fetch(`${BASE}/api/admin/vault`, {
+      method: 'POST', headers: authHeaders(token), body: JSON.stringify(data),
+    }).then(r => handleResponse<any>(r)),
+  deleteAdminVaultMemory: (id: string, token: string) =>
+    fetch(`${BASE}/api/admin/vault/${id}`, {
+      method: 'DELETE', headers: authHeaders(token),
+    }).then(r => handleResponse<any>(r)),
 
   // ─── Settings ─────────────────────────────────────────────────────────────────
   getSettings: () =>

@@ -57,7 +57,7 @@ export const tarotCards = pgTable('tarot_cards', {
   eventSuggestionEn: text('event_suggestion_en').default(''),
   eventDescVi: text('event_desc_vi').default(''),
   eventDescEn: text('event_desc_en').default(''),
-  eventId: uuid('event_id').references(() => events.id),
+  eventId: uuid('event_id').references(() => events.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -65,7 +65,7 @@ export const tarotCards = pgTable('tarot_cards', {
 export const tickets = pgTable('tickets', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id).notNull(),
-  eventId: uuid('event_id').references(() => events.id).notNull(),
+  eventId: uuid('event_id').references(() => events.id, { onDelete: 'set null' }),
   eventTitle: text('event_title').default(''),
   eventDate: text('event_date').default(''),
   eventTime: text('event_time').default(''),
@@ -84,11 +84,12 @@ export const tickets = pgTable('tickets', {
 export const vaultMemories = pgTable('vault_memories', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id).notNull(),
-  eventId: uuid('event_id').references(() => events.id),
+  eventId: uuid('event_id').references(() => events.id, { onDelete: 'set null' }),
   eventTitle: text('event_title').default(''),
   imageUrl: text('image_url').notNull(),
   cloudinaryPublicId: text('cloudinary_public_id').default(''),
   caption: text('caption').default(''),
+  isPublic: boolean('is_public').default(true),
   createdAt: timestamp('created_at').defaultNow(),
 });
 

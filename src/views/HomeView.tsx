@@ -248,7 +248,7 @@ export default function HomeView() {
                 className="flex items-center justify-center gap-2 px-6 py-3.5 bg-[#e8539e] text-white font-bold rounded-xl hover:bg-[#e8539e]/90 transition-all shadow-lg shadow-[#e8539e]/30 group"
               >
                 <Sparkles size={16} className="group-hover:rotate-12 transition-transform" /> 
-                Trải nghiệm bài Quiz để tìm Date hoàn hảo
+                {lng === 'vi' ? 'Trải nghiệm bài Quiz để tìm Date hoàn hảo' : 'Take the Quiz to find your perfect Date'}
               </button>
               <button
                 onClick={() => document.getElementById('events-section')?.scrollIntoView({ behavior: 'smooth' })}

@@ -182,8 +182,20 @@ export default function Chatbot() {
   };
 
   useEffect(() => {
+    api.getSettings().then(data => {
+      if (data.features?.chatbot === false) {
+        // Disabled, don't show
+      }
+    }).catch(console.error);
     setMsgs([{ role: 'bot', text: t('botGreeting') }]);
   }, [lng, t]);
+
+  const [features, setFeatures] = useState<any>(null);
+  useEffect(() => {
+    api.getSettings().then(data => setFeatures(data.features || {})).catch(console.error);
+  }, []);
+
+  if (features && features.chatbot === false) return null;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
