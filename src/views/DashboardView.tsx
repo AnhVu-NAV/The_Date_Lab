@@ -1354,9 +1354,17 @@ function AdminSettings({ token }: { token: string }) {
             { id: 'vault', label: 'Kho Kỷ Niệm (Vault)' },
             { id: 'tarot', label: 'Tarot' },
           ].map(f => (
-            <label key={f.id} className="flex items-center gap-3 p-4 border-2 border-[#f0ede6] rounded-xl cursor-pointer hover:border-[#e8539e]/30 transition-all">
-              <input type="checkbox" checked={features[f.id]} onChange={e => setFeatures(prev => ({ ...prev, [f.id]: e.target.checked }))} className="w-5 h-5 accent-[#e8539e] cursor-pointer" />
-              <span className="font-bold text-[#243d91] text-sm">{f.label}</span>
+            <label key={f.id} className="flex items-center justify-between p-4 border-2 border-[#f0ede6] rounded-xl cursor-pointer hover:border-[#e8539e]/30 transition-all group">
+              <span className="font-bold text-[#243d91] text-sm group-hover:text-[#e8539e] transition-colors">{f.label}</span>
+              <div className="relative">
+                <input 
+                  type="checkbox" 
+                  checked={features[f.id]} 
+                  onChange={e => setFeatures(prev => ({ ...prev, [f.id]: e.target.checked }))} 
+                  className="sr-only peer" 
+                />
+                <div className="w-11 h-6 bg-[#ebe8dd] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#e8539e] shadow-inner"></div>
+              </div>
             </label>
           ))}
         </div>
