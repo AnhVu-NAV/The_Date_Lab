@@ -4,6 +4,7 @@ import { Calendar, MapPin, Send, Ticket, X } from 'lucide-react';
 import MascotImg from '../assets/MASCOT/nam2-05.png';
 import { useLanguage } from '../i18n';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
 
 interface SuggestedEvent {
   id: string;
@@ -182,11 +183,6 @@ export default function Chatbot() {
   };
 
   useEffect(() => {
-    api.getSettings().then(data => {
-      if (data.features?.chatbot === false) {
-        // Disabled, don't show
-      }
-    }).catch(console.error);
     setMsgs([{ role: 'bot', text: t('botGreeting') }]);
   }, [lng, t]);
 
@@ -194,8 +190,6 @@ export default function Chatbot() {
   useEffect(() => {
     api.getSettings().then(data => setFeatures(data.features || {})).catch(console.error);
   }, []);
-
-  if (features && features.chatbot === false) return null;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -299,8 +293,8 @@ export default function Chatbot() {
               <div>
                 <p className="font-display font-bold text-white text-sm">{t('vibeAssistant')}</p>
                 <p className="text-white/60 text-xs flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-green-400 rounded-full inline-block" />
-                  {lng === 'vi' ? 'Đang hoạt động' : 'Online'}
+                  <span className={`w-1.5 h-1.5 rounded-full inline-block ${features?.chatbot === false ? 'bg-amber-400' : 'bg-green-400'}`} />
+                  {features?.chatbot === false ? (lng === 'vi' ? 'Đang nâng cấp' : 'Upgrading') : (lng === 'vi' ? 'Đang hoạt động' : 'Online')}
                 </p>
               </div>
               <button
@@ -312,75 +306,87 @@ export default function Chatbot() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#ebe8dd]/20">
-              {msgs.map((m, i) => (
-                <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  {m.role === 'bot' && (
-                    <div className="w-7 h-7 rounded-full overflow-hidden mr-2 shrink-0 mt-auto">
-                      <img src={MascotImg} alt="" className="w-full h-full object-cover" />
+            {features?.chatbot === false ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-[#ebe8dd]/20">
+                <div className="w-16 h-16 bg-[#e8539e]/10 rounded-full flex items-center justify-center mb-4">
+                  <img src={MascotImg} alt="Mascot" className="w-12 h-auto opacity-50 grayscale" />
+                </div>
+                <h3 className="font-display font-bold text-xl text-[#243d91] mb-2">{lng === 'vi' ? 'Sắp ra mắt' : 'Coming Soon'}</h3>
+                <p className="text-[#243d91]/60 text-sm">{lng === 'vi' ? 'Tính năng Chatbot AI đang được nâng cấp và sẽ sớm quay lại. Mong bạn thông cảm nhé!' : 'AI Chatbot is currently being upgraded and will be back soon!'}</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#ebe8dd]/20">
+                  {msgs.map((m, i) => (
+                    <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      {m.role === 'bot' && (
+                        <div className="w-7 h-7 rounded-full overflow-hidden mr-2 shrink-0 mt-auto">
+                          <img src={MascotImg} alt="" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className={`max-w-[86%] px-4 py-2.5 rounded-2xl text-sm font-medium leading-relaxed ${
+                        m.role === 'user'
+                          ? 'bg-[#e8539e] text-white rounded-br-sm'
+                          : 'bg-white text-[#243d91] rounded-bl-sm shadow-sm border border-[#ebe8dd]'
+                      }`}>
+                        {renderMessageText(m.text)}
+                        {m.role === 'bot' && renderEventCards(m.events)}
+                      </div>
+                    </div>
+                  ))}
+                  {loading && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full overflow-hidden">
+                        <img src={MascotImg} alt="" className="w-full h-full object-cover" />
+                      </div>
+                      <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm border border-[#ebe8dd] flex gap-1">
+                        {[0, 1, 2].map((i) => (
+                          <motion.div
+                            key={i}
+                            className="w-1.5 h-1.5 bg-[#243d91]/30 rounded-full"
+                            animate={{ y: [0, -4, 0] }}
+                            transition={{ duration: 0.6, delay: i * 0.15, repeat: Infinity }}
+                          />
+                        ))}
+                      </div>
                     </div>
                   )}
-                  <div className={`max-w-[86%] px-4 py-2.5 rounded-2xl text-sm font-medium leading-relaxed ${
-                    m.role === 'user'
-                      ? 'bg-[#e8539e] text-white rounded-br-sm'
-                      : 'bg-white text-[#243d91] rounded-bl-sm shadow-sm border border-[#ebe8dd]'
-                  }`}>
-                    {renderMessageText(m.text)}
-                    {m.role === 'bot' && renderEventCards(m.events)}
-                  </div>
+                  <div ref={bottomRef} />
                 </div>
-              ))}
-              {loading && (
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full overflow-hidden">
-                    <img src={MascotImg} alt="" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm border border-[#ebe8dd] flex gap-1">
-                    {[0, 1, 2].map((i) => (
-                      <motion.div
-                        key={i}
-                        className="w-1.5 h-1.5 bg-[#243d91]/30 rounded-full"
-                        animate={{ y: [0, -4, 0] }}
-                        transition={{ duration: 0.6, delay: i * 0.15, repeat: Infinity }}
-                      />
-                    ))}
-                  </div>
+
+                <div className="px-3 pt-2 flex gap-2 overflow-x-auto no-scrollbar pb-1 border-t border-[#ebe8dd]">
+                  {(lng === 'vi' ? QUICK_REPLIES_VI : QUICK_REPLIES_EN).map((q) => (
+                    <button
+                      key={q}
+                      onClick={() => send(q)}
+                      disabled={loading}
+                      className="shrink-0 bg-[#ebe8dd] hover:bg-[#4ecef5]/10 disabled:opacity-50 text-[#243d91] text-xs font-bold px-3 py-1.5 rounded-full transition-all"
+                    >
+                      {q}
+                    </button>
+                  ))}
                 </div>
-              )}
-              <div ref={bottomRef} />
-            </div>
 
-            <div className="px-3 pt-2 flex gap-2 overflow-x-auto no-scrollbar pb-1 border-t border-[#ebe8dd]">
-              {(lng === 'vi' ? QUICK_REPLIES_VI : QUICK_REPLIES_EN).map((q) => (
-                <button
-                  key={q}
-                  onClick={() => send(q)}
-                  disabled={loading}
-                  className="shrink-0 bg-[#ebe8dd] hover:bg-[#4ecef5]/10 disabled:opacity-50 text-[#243d91] text-xs font-bold px-3 py-1.5 rounded-full transition-all"
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
-
-            <div className="p-3 bg-white border-t border-[#ebe8dd] flex gap-2">
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && send(input)}
-                placeholder={t('chatPlaceholder')}
-                disabled={loading}
-                className="flex-1 bg-[#ebe8dd]/60 rounded-xl px-4 py-2 text-sm font-semibold text-[#243d91] outline-none placeholder-[#243d91]/30 focus:bg-[#ebe8dd] disabled:opacity-60"
-              />
-              <button
-                onClick={() => send(input)}
-                disabled={!input.trim() || loading}
-                className="w-9 h-9 bg-[#e8539e] disabled:opacity-40 text-white rounded-xl flex items-center justify-center hover:bg-[#e8539e]/90 transition-all"
-                aria-label={lng === 'vi' ? 'Gửi tin nhắn' : 'Send message'}
-              >
-                <Send size={15} />
-              </button>
-            </div>
+                <div className="p-3 bg-white border-t border-[#ebe8dd] flex gap-2">
+                  <input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && send(input)}
+                    placeholder={t('chatPlaceholder')}
+                    disabled={loading}
+                    className="flex-1 bg-[#ebe8dd]/60 rounded-xl px-4 py-2 text-sm font-semibold text-[#243d91] outline-none placeholder-[#243d91]/30 focus:bg-[#ebe8dd] disabled:opacity-60"
+                  />
+                  <button
+                    onClick={() => send(input)}
+                    disabled={!input.trim() || loading}
+                    className="w-9 h-9 bg-[#e8539e] disabled:opacity-40 text-white rounded-xl flex items-center justify-center hover:bg-[#e8539e]/90 transition-all"
+                    aria-label={lng === 'vi' ? 'Gửi tin nhắn' : 'Send message'}
+                  >
+                    <Send size={15} />
+                  </button>
+                </div>
+              </>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
