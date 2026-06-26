@@ -39,7 +39,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const {
       title, type, date, time, location, locationType,
-      price, maxAttendees, imageUrl, status, forWho, description, schedule, addonIds
+      price, maxAttendees, imageUrl, status, forWho, description, schedule, addonIds,
+      comboMinTickets, comboDiscountPercent
     } = req.body;
 
     if (!title) return res.status(400).json({ error: 'Tên sự kiện là bắt buộc' });
@@ -52,6 +53,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       forWho: forWho || [],
       description, schedule: schedule || [],
       addonIds: addonIds || [],
+      comboMinTickets: Number(comboMinTickets) || 0,
+      comboDiscountPercent: Number(comboDiscountPercent) || 0,
     }).returning();
 
     return res.status(201).json(event);

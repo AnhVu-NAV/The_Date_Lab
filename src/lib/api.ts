@@ -64,6 +64,14 @@ export const api = {
     fetch(`${BASE}/api/vault`, {
       method: 'POST', headers: authHeaders(token), body: JSON.stringify(data),
     }).then(r => handleResponse<any>(r)),
+  updateMemory: (id: string, data: any, token: string) =>
+    fetch(`${BASE}/api/vault/${id}`, {
+      method: 'PUT', headers: authHeaders(token), body: JSON.stringify(data),
+    }).then(r => handleResponse<any>(r)),
+  deleteMemory: (id: string, token: string) =>
+    fetch(`${BASE}/api/vault/${id}`, {
+      method: 'DELETE', headers: authHeaders(token),
+    }).then(r => handleResponse<any>(r)),
 
   // ─── Tarot ─────────────────────────────────────────────────────────────────
   getTarotCards: () =>

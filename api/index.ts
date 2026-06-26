@@ -40,6 +40,11 @@ import ticketsId from '../api_handlers/tickets/[id].js';
 // Vault
 import vaultIndex from '../api_handlers/vault/index.js';
 import vaultUpload from '../api_handlers/vault/upload.js';
+import vaultId from '../api_handlers/vault/[id].js';
+
+// Admin Vault
+import adminVaultMain from '../api_handlers/admin/vault_main.js';
+import adminVaultId from '../api_handlers/admin/vault/[id].js';
 
 export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
 
@@ -79,6 +84,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (seg1 === 'settings') return await adminSettings(req, res);
       if (seg1 === 'stats') return await adminStats(req, res);
       if (seg1 === 'users') return await adminUsers(req, res);
+      if (seg1 === 'vault') {
+        if (segments.length === 2) return await adminVaultMain(req, res);
+        if (segments.length === 3) {
+          req.query.id = seg2;
+          return await adminVaultId(req, res);
+        }
+      }
     }
 
     if (seg0 === 'auth') {
@@ -127,6 +139,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (seg0 === 'vault') {
       if (segments.length === 1) return await vaultIndex(req, res);
       if (seg1 === 'upload') return await vaultUpload(req, res);
+      if (segments.length === 2 && seg1 !== 'upload') {
+        req.query.id = seg1;
+        return await vaultId(req, res);
+      }
     }
 
     return res.status(404).json({ error: `API route not found: /api/${routePath}` });

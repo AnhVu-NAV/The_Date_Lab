@@ -60,7 +60,9 @@ export default function EventDetailView() {
   );
 
   const basePrice = event.price * qty;
-  const discount = qty >= 2 ? basePrice * 0.1 : 0;
+  const minTickets = event.comboMinTickets || 0;
+  const discPercent = event.comboDiscountPercent || 0;
+  const discount = (minTickets > 0 && qty >= minTickets) ? basePrice * (discPercent / 100) : 0;
   
   // Calculate selected addon cost
   const addonCost = dbAddons.filter(a => selectedAddons.has(a.id)).reduce((sum, a) => sum + (a.price || 0), 0);
@@ -275,10 +277,16 @@ export default function EventDetailView() {
                       <span className="font-display font-bold text-2xl text-[#243d91]">{qty}</span>
                       <button onClick={() => setQty(Math.min(event.maxAttendees || 20, qty + 1))} className="w-9 h-9 bg-white rounded-lg flex items-center justify-center shadow-sm hover:bg-[#4ecef5] hover:text-white transition-all"><Plus size={16} /></button>
                     </div>
-                    {qty >= 2 && (
-                      <p className="mt-2 text-xs font-bold text-[#e8539e] bg-[#e8539e]/10 px-3 py-2 rounded-lg flex items-center gap-1.5">
-                        <Sparkles size={12} /> {lng === 'vi' ? `Combo ${qty} người — giảm 10%!` : `${qty}-person combo — 10% off!`}
-                      </p>
+                    {minTickets > 0 && discPercent > 0 && (
+                      qty >= minTickets ? (
+                        <p className="mt-2 text-xs font-bold text-[#e8539e] bg-[#e8539e]/10 px-3 py-2 rounded-lg flex items-center gap-1.5">
+                          <Sparkles size={12} /> {lng === 'vi' ? `Combo ${qty} người — giảm ${discPercent}%!` : `${qty}-person combo — ${discPercent}% off!`}
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-xs font-bold text-[#243d91]/60 bg-[#f0ede6]/50 px-3 py-2 rounded-lg flex items-center gap-1.5">
+                          <Sparkles size={12} className="text-[#4ecef5]" /> {lng === 'vi' ? `Khuyến mãi: Mua từ ${minTickets} vé để được giảm ${discPercent}%!` : `Promo: Buy ${minTickets}+ tickets for ${discPercent}% off!`}
+                        </p>
+                      )
                     )}
                   </div>
 

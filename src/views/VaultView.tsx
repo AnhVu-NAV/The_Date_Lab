@@ -91,6 +91,29 @@ export default function VaultView() {
     }
   };
 
+  const handleTogglePublic = async () => {
+    if (!selectedMemory || !token) return;
+    try {
+      const updated = await api.updateMemory(selectedMemory.id, { isPublic: !selectedMemory.isPublic }, token);
+      setMemories(prev => prev.map(m => m.id === updated.id ? { ...m, isPublic: updated.isPublic } : m));
+      setSelectedMemory(prev => prev ? { ...prev, isPublic: updated.isPublic } : null);
+    } catch (err: any) {
+      alert(err.message || 'Error updating memory');
+    }
+  };
+
+  const handleDeleteMemory = async () => {
+    if (!selectedMemory || !token) return;
+    if (!confirm(lng === 'vi' ? 'Bạn có chắc muốn xóa ảnh này không?' : 'Are you sure you want to delete this photo?')) return;
+    try {
+      await api.deleteMemory(selectedMemory.id, token);
+      setMemories(prev => prev.filter(m => m.id !== selectedMemory.id));
+      setSelectedMemory(null);
+    } catch (err: any) {
+      alert(err.message || 'Error deleting memory');
+    }
+  };
+
   if (!user) return (
     <div className="text-center py-20">
       <div className="w-16 h-16 bg-[#e8539e]/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -254,10 +277,28 @@ export default function VaultView() {
                 )}
 
                 <div className="mt-auto pt-6 flex gap-2">
-                  <span className="text-xs font-bold text-white/40 flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-lg">
-                    {selectedMemory.isPublic ? <Globe size={12}/> : <Lock size={12}/>}
-                    {selectedMemory.isPublic ? 'Public' : 'Private'}
-                  </span>
+                  {(selectedMemory.userId === user?.id || user?.role === 'admin') ? (
+                    <>
+                      <button 
+                        onClick={handleTogglePublic}
+                        className={`text-xs font-bold flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${selectedMemory.isPublic ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30' : 'bg-red-500/20 text-red-300 hover:bg-red-500/30'}`}
+                      >
+                        {selectedMemory.isPublic ? <Globe size={12}/> : <Lock size={12}/>}
+                        {selectedMemory.isPublic ? 'Public' : 'Private'}
+                      </button>
+                      <button 
+                        onClick={handleDeleteMemory}
+                        className="text-xs font-bold flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all ml-auto"
+                      >
+                        <Trash2 size={12}/> {lng === 'vi' ? 'Xóa' : 'Delete'}
+                      </button>
+                    </>
+                  ) : (
+                    <span className="text-xs font-bold text-white/40 flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-lg">
+                      {selectedMemory.isPublic ? <Globe size={12}/> : <Lock size={12}/>}
+                      {selectedMemory.isPublic ? 'Public' : 'Private'}
+                    </span>
+                  )}
                 </div>
               </div>
             </motion.div>

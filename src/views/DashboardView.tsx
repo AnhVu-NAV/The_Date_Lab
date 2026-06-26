@@ -130,7 +130,7 @@ function AdminEvents({ token }: { token: string }) {
   const [uploadingImg, setUploadingImg] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const emptyForm = { title: '', type: 'Gốm', date: '', time: '', location: '', locationType: 'Fixed', price: '', maxAttendees: '20', imageUrl: '', status: 'Available', description: '', forWho: 'Couple', addonIds: [] as string[], schedule: [] as { duration: string; activity: string }[] };
+  const emptyForm = { title: '', type: 'Gốm', date: '', time: '', location: '', locationType: 'Fixed', price: '', maxAttendees: '20', imageUrl: '', status: 'Available', description: '', forWho: 'Couple', addonIds: [] as string[], schedule: [] as { duration: string; activity: string }[], comboMinTickets: '0', comboDiscountPercent: '0' };
   const [form, setForm] = useState(emptyForm);
   const [addons, setAddons] = useState<any[]>([]);
 
@@ -158,7 +158,7 @@ function AdminEvents({ token }: { token: string }) {
 
   const handleSave = async () => {
     try {
-      const data = { ...form, price: Number(form.price), maxAttendees: Number(form.maxAttendees), forWho: [form.forWho], schedule: form.schedule };
+      const data = { ...form, price: Number(form.price), maxAttendees: Number(form.maxAttendees), forWho: [form.forWho], schedule: form.schedule, comboMinTickets: Number(form.comboMinTickets), comboDiscountPercent: Number(form.comboDiscountPercent) };
       if (editEvent) await api.updateEvent(editEvent.id, data, token);
       else await api.createEvent(data, token);
       setShowForm(false); setEditEvent(null); setForm(emptyForm);
@@ -174,7 +174,7 @@ function AdminEvents({ token }: { token: string }) {
 
   const openEdit = (ev: any) => {
     setEditEvent(ev);
-    setForm({ title: ev.title, type: ev.type || '', date: ev.date || '', time: ev.time || '', location: ev.location || '', locationType: ev.locationType || 'Fixed', price: String(ev.price || ''), maxAttendees: String(ev.maxAttendees || 20), imageUrl: ev.imageUrl || '', status: ev.status || 'Available', description: ev.description || '', forWho: (ev.forWho || ['Couple'])[0], addonIds: ev.addonIds || [], schedule: Array.isArray(ev.schedule) ? ev.schedule : [] });
+    setForm({ title: ev.title, type: ev.type || '', date: ev.date || '', time: ev.time || '', location: ev.location || '', locationType: ev.locationType || 'Fixed', price: String(ev.price || ''), maxAttendees: String(ev.maxAttendees || 20), imageUrl: ev.imageUrl || '', status: ev.status || 'Available', description: ev.description || '', forWho: (ev.forWho || ['Couple'])[0], addonIds: ev.addonIds || [], schedule: Array.isArray(ev.schedule) ? ev.schedule : [], comboMinTickets: String(ev.comboMinTickets || 0), comboDiscountPercent: String(ev.comboDiscountPercent || 0) });
     setShowForm(true);
   };
 
@@ -266,6 +266,10 @@ function AdminEvents({ token }: { token: string }) {
               <div className="grid grid-cols-2 gap-3">
                 <FormField label="Giá vé (đ)"><input className={inputCls} type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} placeholder="350000" /></FormField>
                 <FormField label="Tối đa người"><input className={inputCls} type="number" value={form.maxAttendees} onChange={e => setForm(f => ({ ...f, maxAttendees: e.target.value }))} /></FormField>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Combo tối thiểu (vé)"><input className={inputCls} type="number" value={form.comboMinTickets} onChange={e => setForm(f => ({ ...f, comboMinTickets: e.target.value }))} placeholder="VD: 2" /></FormField>
+                <FormField label="Giảm giá (%)"><input className={inputCls} type="number" value={form.comboDiscountPercent} onChange={e => setForm(f => ({ ...f, comboDiscountPercent: e.target.value }))} placeholder="VD: 10" /></FormField>
               </div>
               <FormField label="Phù hợp với">
                 <select className={inputCls} value={form.forWho} onChange={e => setForm(f => ({ ...f, forWho: e.target.value }))}>
