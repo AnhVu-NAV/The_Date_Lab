@@ -6,7 +6,7 @@ import {
   Upload, Star, LogOut, Bell, TrendingUp, Clock, CircleCheck, AlertCircle, MapPin, Download,
   LayoutDashboard, Landmark, ShoppingBag, Sparkles, Home, Lightbulb, CheckCircle2, Settings, Ban
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
@@ -1702,6 +1702,7 @@ export default function DashboardView() {
   const { lng } = useLanguage();
   const { user, token, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const isAdmin = user?.role === 'admin';
 
@@ -1726,6 +1727,13 @@ export default function DashboardView() {
   const tabs = isAdmin ? adminTabs : userTabs;
   const [activeTab, setActiveTab] = useState(tabs[0].id);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const hash = location.hash.replace('#', '');
+    if (hash && tabs.some(t => t.id === hash)) {
+      setActiveTab(hash);
+    }
+  }, [location.hash, tabs]);
 
   if (!user || !token) {
     navigate('/login');

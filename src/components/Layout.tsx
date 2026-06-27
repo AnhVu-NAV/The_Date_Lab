@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Lock, Menu, X, LogIn, LogOut, Shield, Sparkles, Compass, MapPin, Mail } from 'lucide-react';
+import { User, Lock, Menu, X, LogIn, LogOut, Shield, Sparkles, Compass, MapPin, Mail, ChevronDown, Ticket } from 'lucide-react';
 import Chatbot from './Chatbot';
 import TarotModal from './TarotModal';
 import Logo from '../assets/Logo/2.png';
@@ -16,6 +16,7 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [tarotOpen, setTarotOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [siteSettings, setSiteSettings] = useState<any>({});
 
   useEffect(() => {
@@ -90,25 +91,73 @@ export default function Layout() {
             </button>
 
             {user ? (
-              <>
+              <div className="relative hidden md:block">
                 <button
-                  onClick={() => navigate('/dashboard')}
-                  className={`hidden md:flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-xl transition-all ${
-                    location.pathname === '/dashboard'
-                      ? 'bg-[#243d91] text-white'
-                      : 'bg-[#f0ede6] text-[#243d91] hover:bg-[#243d91]/10'
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className={`flex items-center gap-2 text-sm font-bold pl-2 pr-3 py-1.5 rounded-full transition-all border border-[#f0ede6] shadow-sm ${
+                    userMenuOpen || location.pathname === '/dashboard'
+                      ? 'bg-[#243d91] text-white border-[#243d91]'
+                      : 'bg-white text-[#243d91] hover:bg-[#f0ede6]'
                   }`}
                 >
-                  {user.role === 'admin' ? <Shield size={16} /> : <User size={16} />}
-                  <span className="hidden lg:inline">{user.role === 'admin' ? 'Admin' : t('navDashboard')}</span>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center overflow-hidden shrink-0 ${userMenuOpen || location.pathname === '/dashboard' ? 'bg-white/20' : 'bg-[#f0ede6]'}`}>
+                    {user.avatarUrl ? <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" /> : user.name?.[0]?.toUpperCase()}
+                  </div>
+                  <span className="max-w-[120px] truncate">{user.name}</span>
+                  <ChevronDown size={14} className={`transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
-                <button
-                  onClick={handleLogout}
-                  className="hidden md:flex items-center gap-1.5 text-sm font-bold px-3 py-2 rounded-xl text-[#243d91]/40 hover:text-red-500 hover:bg-red-50 transition-all"
-                >
-                  <LogOut size={15} />
-                </button>
-              </>
+
+                <AnimatePresence>
+                  {userMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-[#f0ede6] py-2 overflow-hidden z-50"
+                      >
+                        {user.role === 'admin' && (
+                          <button
+                            onClick={() => { navigate('/dashboard'); setUserMenuOpen(false); }}
+                            className="w-full text-left px-4 py-2.5 text-sm font-bold text-[#243d91] hover:bg-[#f0ede6]/50 flex items-center gap-2.5 transition-all"
+                          >
+                            <Shield size={16} className="text-[#e8539e]" />
+                            Admin Panel
+                          </button>
+                        )}
+                        
+                        <button
+                          onClick={() => { navigate('/dashboard#profile'); setUserMenuOpen(false); }}
+                          className="w-full text-left px-4 py-2.5 text-sm font-bold text-[#243d91] hover:bg-[#f0ede6]/50 flex items-center gap-2.5 transition-all"
+                        >
+                          <User size={16} className="text-[#243d91]/50" />
+                          {lng === 'vi' ? 'Hồ sơ cá nhân' : 'My Profile'}
+                        </button>
+                        
+                        <button
+                          onClick={() => { navigate('/dashboard#tickets'); setUserMenuOpen(false); }}
+                          className="w-full text-left px-4 py-2.5 text-sm font-bold text-[#243d91] hover:bg-[#f0ede6]/50 flex items-center gap-2.5 transition-all"
+                        >
+                          <Ticket size={16} className="text-[#243d91]/50" />
+                          {lng === 'vi' ? 'Vé của tôi' : 'My Tickets'}
+                        </button>
+
+                        <div className="h-px bg-[#f0ede6] my-1 mx-4" />
+
+                        <button
+                          onClick={handleLogout}
+                          className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 flex items-center gap-2.5 transition-all"
+                        >
+                          <LogOut size={16} />
+                          {lng === 'vi' ? 'Đăng xuất' : 'Logout'}
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
             ) : (
               <Link
                 to="/login"
