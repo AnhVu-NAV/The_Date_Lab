@@ -16,11 +16,8 @@ export default function EventDetailView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [instax, setInstax] = useState(false);
-  const [keychain, setKeychain] = useState(false);
   const [qty, setQty] = useState(1);
   const [step, setStep] = useState<'info' | 'pay' | 'qr' | 'done'>('info');
-  const [form, setForm] = useState({ name: user?.name || '', email: user?.email || '', phone: user?.phone || '' });
   const [ticketData, setTicketData] = useState<any>(null);
   const [qrData, setQrData] = useState<any>(null);
   const [bookingLoading, setBookingLoading] = useState(false);

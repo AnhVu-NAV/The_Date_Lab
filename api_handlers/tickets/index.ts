@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { eq, desc } from 'drizzle-orm';
 import { getDb, requireAuth, requireAdmin, setCors, generatePaymentRef } from '../_lib/helpers.js';
-import { tickets, events } from '../../src/db/schema.js';
+import { tickets, events, addons } from '../../src/db/schema.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(res);
@@ -49,6 +49,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: `Chỉ còn ${maxAttendees - currentAttendees} chỗ trống` });
     }
 
+    // Securely calculate total price
+    let calculatedTotalPrice = (event.price || 0) * qtyNum;
+    
+    // Apply combo discounts
+    const comboDiscounts = Array.isArray(event.comboDiscounts) ? event.comboDiscounts : [];
+    let applicableDiscountPercent = 0;
+    
+    if (comboDiscounts.length > 0) {
+      const sortedDescDiscounts = [...comboDiscounts].sort((a: any, b: any) => b.minTickets - a.minTickets);
+      for (const tier of sortedDescDiscounts) {
+        if (qtyNum >= tier.minTickets) {
+          applicableDiscountPercent = tier.discountPercent;
+          break;
+        }
+      }
+    } else if ((event.comboMinTickets || 0) > 0 && (event.comboDiscountPercent || 0) > 0) {
+      if (qtyNum >= (event.comboMinTickets || 0)) {
+        applicableDiscountPercent = event.comboDiscountPercent || 0;
+      }
+    }
+    
+    const discountAmount = applicableDiscountPercent > 0 ? calculatedTotalPrice * (applicableDiscountPercent / 100) : 0;
+    calculatedTotalPrice -= discountAmount;
+
+    // Verify addons and add their cost
+    const allDbAddons = await db.select().from(addons).where(eq(addons.isActive, true));
+    const verifiedAddons = [];
+    if (Array.isArray(addonList)) {
+      for (const clientAddon of addonList) {
+        const dbAddon = allDbAddons.find(a => a.name === clientAddon.name || a.nameEn === clientAddon.name);
+        if (dbAddon) {
+          calculatedTotalPrice += dbAddon.price || 0;
+          // Use client's name (vi or en) but trust db price
+          verifiedAddons.push({ name: clientAddon.name, price: dbAddon.price });
+        }
+      }
+    }
+
     const paymentRef = generatePaymentRef();
 
     const [ticket] = await db.insert(tickets).values({
@@ -59,9 +97,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       eventTime: event.time || '',
       eventLocation: event.location || '',
       eventImageUrl: event.imageUrl || '',
-      quantity: Number(quantity),
-      addons: addonList || [],
-      totalPrice: Number(totalPrice) || event.price * Number(quantity),
+      quantity: qtyNum,
+      addons: verifiedAddons,
+      totalPrice: calculatedTotalPrice,
       status: 'Upcoming',
       paymentStatus: 'pending',
       paymentRef,

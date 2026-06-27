@@ -15,9 +15,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const db = getDb();
 
     // Get active bank account from DB
-    const [bank] = await db.select().from(bankAccounts)
+    let [bank] = await db.select().from(bankAccounts)
       .where(eq(bankAccounts.isActive, true))
       .limit(1);
+
+    if (!bank) {
+      // Fallback to the first available bank if no active bank
+      [bank] = await db.select().from(bankAccounts).limit(1);
+    }
 
     if (!bank) {
       return res.status(503).json({ error: 'Chưa có tài khoản ngân hàng được thiết lập' });

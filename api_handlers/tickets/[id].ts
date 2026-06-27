@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { eq } from 'drizzle-orm';
 import { getDb, requireAuth, requireAdmin, setCors } from '../_lib/helpers.js';
-import { tickets } from '../../src/db/schema.js';
+import { tickets, events } from '../../src/db/schema.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(res);
@@ -42,6 +42,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .set({ paymentStatus, status })
         .where(eq(tickets.id, id))
         .returning();
+        
+      if (status === 'Cancelled' && ticket.status !== 'Cancelled' && ticket.eventId) {
+        const [event] = await db.select().from(events).where(eq(events.id, ticket.eventId)).limit(1);
+        if (event) {
+          const newAttendees = Math.max(0, (event.attendees || 0) - (ticket.quantity || 0));
+          let newStatus = event.status;
+          if (newAttendees < (event.maxAttendees || 20)) {
+            newStatus = newAttendees >= (event.maxAttendees || 20) * 0.8 ? 'Almost Sold Out' : 'Available';
+          }
+          await db.update(events).set({ attendees: newAttendees, status: newStatus }).where(eq(events.id, event.id));
+        }
+      } else if (status !== 'Cancelled' && ticket.status === 'Cancelled' && ticket.eventId) {
+        const [event] = await db.select().from(events).where(eq(events.id, ticket.eventId)).limit(1);
+        if (event) {
+          const newAttendees = (event.attendees || 0) + (ticket.quantity || 0);
+          let newStatus = event.status;
+          if (newAttendees >= (event.maxAttendees || 20)) {
+            newStatus = 'Sold Out';
+          } else if (newAttendees >= (event.maxAttendees || 20) * 0.8) {
+            newStatus = 'Almost Sold Out';
+          }
+          await db.update(events).set({ attendees: newAttendees, status: newStatus }).where(eq(events.id, event.id));
+        }
+      }
+      
       return res.json(updated);
     } else {
       // User can only cancel their own ticket
@@ -52,6 +77,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .set({ status: 'Cancelled' })
         .where(eq(tickets.id, id))
         .returning();
+
+      if (ticket.status !== 'Cancelled' && ticket.eventId) {
+        const [event] = await db.select().from(events).where(eq(events.id, ticket.eventId)).limit(1);
+        if (event) {
+          const newAttendees = Math.max(0, (event.attendees || 0) - (ticket.quantity || 0));
+          let newStatus = event.status;
+          if (newAttendees < (event.maxAttendees || 20)) {
+            newStatus = newAttendees >= (event.maxAttendees || 20) * 0.8 ? 'Almost Sold Out' : 'Available';
+          }
+          await db.update(events).set({ attendees: newAttendees, status: newStatus }).where(eq(events.id, event.id));
+        }
+      }
+
       return res.json(updated);
     }
   }
