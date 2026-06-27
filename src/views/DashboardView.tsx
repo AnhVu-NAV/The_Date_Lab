@@ -4,13 +4,15 @@ import {
   User, Ticket, Camera, Shield, BarChart3, CalendarDays, Users,
   CreditCard, Layers, Plus, Pencil, Trash2, Check, X, ChevronDown,
   Upload, Star, LogOut, Bell, TrendingUp, Clock, CircleCheck, AlertCircle, MapPin, Download,
-  LayoutDashboard, Landmark, ShoppingBag, Sparkles, Home, Lightbulb, CheckCircle2, Settings
+  LayoutDashboard, Landmark, ShoppingBag, Sparkles, Home, Lightbulb, CheckCircle2, Settings, Ban
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import toast from 'react-hot-toast';
+import { useDialog } from '../context/DialogContext';
 import Logo from '../assets/Logo/2.png';
 
 // ─── Shared Form Modal ───────────────────────────────────────────────────────
@@ -123,6 +125,7 @@ function AdminOverview({ token }: { token: string }) {
 // ─── Admin: Events ────────────────────────────────────────────────────────────
 function AdminEvents({ token }: { token: string }) {
   const { lng } = useLanguage();
+  const { confirm } = useDialog();
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -150,7 +153,8 @@ function AdminEvents({ token }: { token: string }) {
       try {
         const res = await api.uploadImage(reader.result as string, 'events', token);
         setForm(f => ({ ...f, imageUrl: res.url }));
-      } catch { alert('Upload failed'); }
+        toast.success('Upload thành công!');
+      } catch { toast.error('Upload failed'); }
       finally { setUploadingImg(false); }
     };
     reader.readAsDataURL(file);
@@ -162,13 +166,15 @@ function AdminEvents({ token }: { token: string }) {
       if (editEvent) await api.updateEvent(editEvent.id, data, token);
       else await api.createEvent(data, token);
       setShowForm(false); setEditEvent(null); setForm(emptyForm);
+      toast.success(editEvent ? 'Cập nhật thành công!' : 'Tạo mới thành công!');
       refresh();
-    } catch (err: any) { alert(err.message); }
+    } catch (err: any) { toast.error(err.message); }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm(lng === 'vi' ? 'Xóa sự kiện này?' : 'Delete this event?')) return;
+    if (!(await confirm(lng === 'vi' ? 'Xóa sự kiện này?' : 'Delete this event?'))) return;
     await api.deleteEvent(id, token);
+    toast.success('Đã xóa sự kiện');
     refresh();
   };
 
@@ -407,6 +413,7 @@ function AdminEvents({ token }: { token: string }) {
 // ─── Admin: Tickets ───────────────────────────────────────────────────────────
 function AdminTickets({ token }: { token: string }) {
   const { lng } = useLanguage();
+  const { prompt } = useDialog();
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -419,8 +426,22 @@ function AdminTickets({ token }: { token: string }) {
     setTickets(prev => prev.map(t => t.id === id ? { ...t, paymentStatus: 'paid' } : t));
   };
 
-  const pendingTickets = tickets.filter(t => t.paymentStatus === 'pending');
-  const paidTickets = tickets.filter(t => t.paymentStatus === 'paid');
+  const cancelTicket = async (id: string) => {
+    const reason = await prompt(lng === 'vi' ? 'Vui lòng nhập lý do hủy vé:' : 'Please enter cancellation reason:');
+    if (reason === null) return;
+    if (reason.trim() === '') {
+      toast.error(lng === 'vi' ? 'Bạn phải nhập lý do hủy vé' : 'You must enter a cancellation reason');
+      return;
+    }
+    await api.updateTicket(id, { status: 'Cancelled', cancelReason: reason }, token);
+    toast.success('Hủy vé thành công');
+    setTickets(prev => prev.map(t => t.id === id ? { ...t, status: 'Cancelled', cancelReason: reason } : t));
+  };
+
+  const pendingTickets = tickets.filter(t => t.paymentStatus === 'pending' && t.status !== 'Cancelled');
+  const paidTickets = tickets.filter(t => t.paymentStatus === 'paid' && t.status !== 'Cancelled');
+
+  const cancelledTickets = tickets.filter(t => t.status === 'Cancelled');
 
   return (
     <div className="space-y-6">
@@ -451,9 +472,14 @@ function AdminTickets({ token }: { token: string }) {
                     <td className="px-4 py-3 font-bold text-[#e8539e]">{(tk.totalPrice || 0).toLocaleString('vi-VN')}đ</td>
                     <td className="px-4 py-3 font-mono text-xs font-bold text-[#243d91]">{tk.paymentRef}</td>
                     <td className="px-4 py-3">
-                      <button onClick={() => confirmPayment(tk.id)} className="flex items-center gap-1 px-3 py-1.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg hover:bg-emerald-200 transition-all">
-                        <CircleCheck size={12} /> {lng === 'vi' ? 'Xác nhận' : 'Confirm'}
-                      </button>
+                      <div className="flex items-center gap-2 justify-end">
+                        <button onClick={() => confirmPayment(tk.id)} className="flex items-center gap-1 px-3 py-1.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg hover:bg-emerald-200 transition-all">
+                          <CircleCheck size={12} /> {lng === 'vi' ? 'Xác nhận' : 'Confirm'}
+                        </button>
+                        <button onClick={() => cancelTicket(tk.id)} className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-500 text-xs font-bold rounded-lg hover:bg-red-100 transition-all">
+                          <X size={12} /> {lng === 'vi' ? 'Hủy' : 'Cancel'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -490,6 +516,35 @@ function AdminTickets({ token }: { token: string }) {
           </table>
         </div>
       </div>
+
+      {/* Cancelled */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Ban size={16} className="text-red-500" />
+          <h4 className="font-bold text-sm text-[#243d91]">{lng === 'vi' ? 'Đã hủy' : 'Cancelled'} ({cancelledTickets.length})</h4>
+        </div>
+        <div className="bg-white rounded-2xl border border-[#f0ede6] overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-red-50"><tr>
+              {['Sự kiện', 'Mã CK', 'Số lượng', 'Tổng tiền', 'Lý do hủy', 'Ngày đặt'].map(h => (
+                <th key={h} className="text-left px-4 py-3 text-xs font-bold uppercase tracking-widest text-red-700/60">{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {cancelledTickets.map(tk => (
+                <tr key={tk.id} className="border-t border-[#f0ede6] hover:bg-red-50/20">
+                  <td className="px-4 py-3 font-semibold text-[#243d91]">{tk.eventTitle}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{tk.paymentRef}</td>
+                  <td className="px-4 py-3 font-bold text-center">{tk.quantity}</td>
+                  <td className="px-4 py-3 font-bold text-[#e8539e]">{(tk.totalPrice || 0).toLocaleString('vi-VN')}đ</td>
+                  <td className="px-4 py-3 text-xs text-red-500 font-bold">{tk.cancelReason || '—'}</td>
+                  <td className="px-4 py-3 text-xs text-[#243d91]/50">{tk.createdAt ? new Date(tk.createdAt).toLocaleDateString('vi-VN') : ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
@@ -497,6 +552,7 @@ function AdminTickets({ token }: { token: string }) {
 // ─── Admin: Tarot Cards ───────────────────────────────────────────────────────
 function AdminTarot({ token }: { token: string }) {
   const { lng } = useLanguage();
+  const { confirm } = useDialog();
   const [cards, setCards] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -522,7 +578,8 @@ function AdminTarot({ token }: { token: string }) {
       try {
         const res = await api.uploadImage(reader.result as string, 'tarot', token);
         setForm(f => ({ ...f, imageUrl: res.url }));
-      } catch { alert('Upload failed'); }
+        toast.success('Upload thành công!');
+      } catch { toast.error('Upload failed'); }
       finally { setUploading(false); }
     };
     reader.readAsDataURL(file);
@@ -533,13 +590,15 @@ function AdminTarot({ token }: { token: string }) {
       if (editCard) await api.updateTarotCard(editCard.id, form, token);
       else await api.createTarotCard(form, token);
       setShowForm(false); setEditCard(null); setForm(emptyForm);
+      toast.success(editCard ? 'Cập nhật thành công!' : 'Tạo mới thành công!');
       refresh();
-    } catch (err: any) { alert(err.message); }
+    } catch (err: any) { toast.error(err.message); }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Xóa lá bài này?')) return;
+    if (!(await confirm('Xóa lá bài này?'))) return;
     await api.deleteTarotCard(id, token);
+    toast.success('Đã xóa lá bài');
     refresh();
   };
 
@@ -646,6 +705,7 @@ function AdminTarot({ token }: { token: string }) {
 // ─── Admin: Bank Accounts ────────────────────────────────────────────────────
 function AdminBank({ token }: { token: string }) {
   const { lng } = useLanguage();
+  const { confirm } = useDialog();
   const [banks, setBanks] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editBank, setEditBank] = useState<any>(null);
@@ -660,18 +720,21 @@ function AdminBank({ token }: { token: string }) {
       else await api.createBank(form, token);
       setShowForm(false); setEditBank(null);
       setForm({ bankName: '', bankCode: '', accountNumber: '', accountName: '' });
+      toast.success(editBank ? 'Cập nhật thành công!' : 'Tạo mới thành công!');
       refresh();
-    } catch (err: any) { alert(err.message); }
+    } catch (err: any) { toast.error(err.message); }
   };
 
   const handleActivate = async (id: string) => {
     await api.activateBank(id, token);
+    toast.success('Đã kích hoạt tài khoản');
     refresh();
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm(lng === 'vi' ? 'Xóa tài khoản này?' : 'Delete this account?')) return;
+    if (!(await confirm(lng === 'vi' ? 'Xóa tài khoản này?' : 'Delete this account?'))) return;
     await api.deleteBank(id, token);
+    toast.success('Đã xóa tài khoản');
     refresh();
   };
 
@@ -821,7 +884,7 @@ function UserTickets({ token }: { token: string }) {
   const { lng } = useLanguage();
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'paid' | 'pending'>('all');
+  const [filter, setFilter] = useState<'all' | 'paid' | 'pending' | 'cancelled'>('all');
 
   useEffect(() => {
     api.getTickets(token).then(setTickets).finally(() => setLoading(false));
@@ -854,8 +917,9 @@ function UserTickets({ token }: { token: string }) {
   );
 
   const filteredTickets = tickets.filter(tk => {
-    if (filter === 'paid') return tk.paymentStatus === 'paid';
-    if (filter === 'pending') return tk.paymentStatus !== 'paid';
+    if (filter === 'paid') return tk.paymentStatus === 'paid' && tk.status !== 'Cancelled';
+    if (filter === 'pending') return tk.paymentStatus !== 'paid' && tk.status !== 'Cancelled';
+    if (filter === 'cancelled') return tk.status === 'Cancelled';
     return true;
   });
 
@@ -870,7 +934,7 @@ function UserTickets({ token }: { token: string }) {
 
   return (
     <div className="flex flex-col">
-      <div className="flex items-center gap-2 mb-6">
+      <div className="flex flex-wrap items-center gap-2 mb-6">
         <button onClick={() => setFilter('all')} className={`px-4 py-2 rounded-full text-sm font-bold transition-all ${filter === 'all' ? 'bg-[#243d91] text-white shadow-md' : 'bg-white border border-[#f0ede6] text-[#243d91]/60 hover:text-[#243d91] hover:border-[#243d91]/30'}`}>
           {lng === 'vi' ? 'Tất cả' : 'All'}
         </button>
@@ -879,6 +943,9 @@ function UserTickets({ token }: { token: string }) {
         </button>
         <button onClick={() => setFilter('pending')} className={`px-4 py-2 rounded-full text-sm font-bold transition-all ${filter === 'pending' ? 'bg-amber-500 text-white shadow-md' : 'bg-white border border-[#f0ede6] text-[#243d91]/60 hover:text-amber-600 hover:border-amber-200'}`}>
           {lng === 'vi' ? 'Chờ thanh toán' : 'Pending'}
+        </button>
+        <button onClick={() => setFilter('cancelled')} className={`px-4 py-2 rounded-full text-sm font-bold transition-all ${filter === 'cancelled' ? 'bg-red-500 text-white shadow-md' : 'bg-white border border-[#f0ede6] text-[#243d91]/60 hover:text-red-600 hover:border-red-200'}`}>
+          {lng === 'vi' ? 'Đã hủy' : 'Cancelled'}
         </button>
       </div>
 
@@ -911,13 +978,16 @@ function UserTickets({ token }: { token: string }) {
                 <div className={`flex-1 flex flex-col justify-between relative bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-repeat opacity-[0.98] ${isCompact ? 'p-5' : 'p-6 md:p-8'}`}>
                   <div>
                     <div className={`flex items-center gap-2 ${isCompact ? 'mb-2' : 'mb-4'}`}>
-                      <span className={`text-xs font-bold px-4 py-1.5 rounded-full border shadow-sm ${isPaid ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
-                        {isPaid ? <span className="flex items-center gap-1.5"><CheckCircle2 size={14}/> {lng === 'vi' ? 'Đã thanh toán' : 'Paid'}</span> : <span className="flex items-center gap-1.5"><Clock size={14}/> {lng === 'vi' ? 'Chờ thanh toán' : 'Pending'}</span>}
+                      <span className={`text-xs font-bold px-4 py-1.5 rounded-full border shadow-sm ${tk.status === 'Cancelled' ? 'bg-red-50 text-red-600 border-red-200' : isPaid ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
+                        {tk.status === 'Cancelled' ? <span className="flex items-center gap-1.5"><X size={14}/> {lng === 'vi' ? 'ĐÃ HỦY' : 'CANCELLED'}</span> : isPaid ? <span className="flex items-center gap-1.5"><CheckCircle2 size={14}/> {lng === 'vi' ? 'Đã thanh toán' : 'Paid'}</span> : <span className="flex items-center gap-1.5"><Clock size={14}/> {lng === 'vi' ? 'Chờ thanh toán' : 'Pending'}</span>}
                       </span>
                     </div>
                     <h4 className={`font-display font-bold text-[#243d91] mb-1 leading-tight ${isCompact ? 'text-lg line-clamp-2' : 'text-2xl md:text-3xl'}`}>
                       {tk.eventTitle}
                     </h4>
+                    {tk.status === 'Cancelled' && tk.cancelReason && (
+                      <p className="text-red-500 text-sm font-semibold mt-1">Lý do hủy: {tk.cancelReason}</p>
+                    )}
                     
                     <div className={`grid ${isCompact ? 'grid-cols-1 gap-2 mt-3' : 'grid-cols-2 gap-4 md:gap-6 mt-8'}`}>
                       <div>
@@ -949,7 +1019,11 @@ function UserTickets({ token }: { token: string }) {
                   NO. {tk.id.split('-')[0]}
                 </p>
                 
-                {isPaid ? (
+                {tk.status === 'Cancelled' ? (
+                  <div className={`bg-white rounded-2xl border border-[#f0ede6] flex flex-col items-center justify-center text-red-400 opacity-80 shadow-sm ${isCompact ? 'w-[70px] h-[70px] mb-3' : 'w-[120px] h-[120px] mb-6'}`}>
+                    <Ban size={isCompact ? 24 : 40} />
+                  </div>
+                ) : isPaid ? (
                   <div className={`bg-white p-3 rounded-2xl shadow-md border border-[#f0ede6] transform group-hover:scale-[1.02] transition-transform ${isCompact ? 'mb-3' : 'mb-6'}`}>
                     <QRCodeSVG value={tk.id} size={isCompact ? 70 : 120} fgColor="#243d91" />
                   </div>
@@ -973,15 +1047,17 @@ function UserTickets({ token }: { token: string }) {
             </div>
 
             {/* Floating Download Button */}
-            <div className="absolute top-4 right-4 z-20 transition-opacity opacity-100 md:opacity-0 group-hover:opacity-100">
-              <button 
-                onClick={() => handleDownload(tk.id)}
-                className="flex items-center gap-2 bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-[#f0ede6] text-[#243d91] font-bold text-sm hover:text-[#e8539e] hover:bg-white hover:scale-105 transition-all p-2.5 md:p-3"
-                title={lng === 'vi' ? 'Tải vé' : 'Download'}
-              >
-                <Download size={20} /> <span className={!isVertical ? "md:hidden" : "hidden"}>{lng === 'vi' ? 'Tải vé' : 'Download'}</span>
-              </button>
-            </div>
+            {tk.status !== 'Cancelled' && (
+              <div className="absolute top-4 right-4 z-20 transition-opacity opacity-100 md:opacity-0 group-hover:opacity-100">
+                <button 
+                  onClick={() => handleDownload(tk.id)}
+                  className="flex items-center gap-2 bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-[#f0ede6] text-[#243d91] font-bold text-sm hover:text-[#e8539e] hover:bg-white hover:scale-105 transition-all p-2.5 md:p-3"
+                  title={lng === 'vi' ? 'Tải vé' : 'Download'}
+                >
+                  <Download size={20} /> <span className={!isVertical ? "md:hidden" : "hidden"}>{lng === 'vi' ? 'Tải vé' : 'Download'}</span>
+                </button>
+              </div>
+            )}
           </div>
         );
       })}
@@ -1013,8 +1089,9 @@ function UserProfile({ token }: { token: string }) {
       const updated = await api.updateProfile(form, token);
       updateUser(updated);
       setSaved(true);
+      toast.success('Cập nhật thành công!');
       setTimeout(() => setSaved(false), 2000);
-    } catch (err: any) { alert(err.message); }
+    } catch (err: any) { toast.error(err.message); }
     finally { setSaving(false); }
   };
 
@@ -1100,6 +1177,7 @@ function UserProfile({ token }: { token: string }) {
 // ─── Admin: Add-ons ────────────────────────────────────────────────────────────
 function AdminAddons({ token }: { token: string }) {
   const { lng } = useLanguage();
+  const { confirm } = useDialog();
   const [addons, setAddons] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editAddon, setEditAddon] = useState<any>(null);
@@ -1121,7 +1199,8 @@ function AdminAddons({ token }: { token: string }) {
       try {
         const res = await api.uploadImage(reader.result as string, 'addons', token);
         setForm(f => ({ ...f, imageUrl: res.url }));
-      } catch { alert('Upload failed'); }
+        toast.success('Upload thành công!');
+      } catch { toast.error('Upload failed'); }
       finally { setUploading(false); }
     };
     reader.readAsDataURL(file);
@@ -1132,13 +1211,15 @@ function AdminAddons({ token }: { token: string }) {
       if (editAddon) await api.updateAddon(editAddon.id, form, token);
       else await api.createAddon(form, token);
       setShowForm(false); setEditAddon(null); setForm(emptyForm);
+      toast.success(editAddon ? 'Cập nhật thành công!' : 'Tạo mới thành công!');
       refresh();
-    } catch (err: any) { alert(err.message); }
+    } catch (err: any) { toast.error(err.message); }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Xóa Add-on này?')) return;
+    if (!(await confirm('Xóa Add-on này?'))) return;
     await api.deleteAddon(id, token);
+    toast.success('Đã xóa Add-on');
     refresh();
   };
 
@@ -1217,6 +1298,7 @@ function AdminAddons({ token }: { token: string }) {
 // ─── Admin: Vault ─────────────────────────────────────────────────────────────
 function AdminVault({ token }: { token: string }) {
   const { lng } = useLanguage();
+  const { confirm } = useDialog();
   const [memories, setMemories] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -1241,7 +1323,8 @@ function AdminVault({ token }: { token: string }) {
       try {
         const res = await api.uploadImage(reader.result as string, 'vault', token);
         setForm(f => ({ ...f, imageUrl: res.url }));
-      } catch { alert('Upload failed'); }
+        toast.success('Upload thành công!');
+      } catch { toast.error('Upload failed'); }
       finally { setUploading(false); }
     };
     reader.readAsDataURL(file);
@@ -1251,13 +1334,15 @@ function AdminVault({ token }: { token: string }) {
     try {
       await api.createAdminVaultMemory(form, token);
       setShowForm(false); setForm(emptyForm);
+      toast.success('Thêm ảnh thành công!');
       refresh();
-    } catch (err: any) { alert(err.message); }
+    } catch (err: any) { toast.error(err.message); }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Xóa ảnh này?')) return;
+    if (!(await confirm('Xóa ảnh này?'))) return;
     await api.deleteAdminVaultMemory(id, token);
+    toast.success('Đã xóa ảnh');
     refresh();
   };
 

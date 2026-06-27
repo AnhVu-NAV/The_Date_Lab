@@ -37,9 +37,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (auth.role === 'admin') {
       // Admin can update payment_status and status
-      const { paymentStatus, status } = req.body;
+      const { paymentStatus, status, cancelReason } = req.body;
       const [updated] = await db.update(tickets)
-        .set({ paymentStatus, status })
+        .set({ paymentStatus, status, cancelReason })
         .where(eq(tickets.id, id))
         .returning();
         
@@ -71,10 +71,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } else {
       // User can only cancel their own ticket
       if (ticket.userId !== auth.id) return res.status(403).json({ error: 'Không có quyền' });
-      const { status } = req.body;
+      const { status, cancelReason } = req.body;
       if (status !== 'Cancelled') return res.status(400).json({ error: 'Chỉ có thể hủy vé' });
       const [updated] = await db.update(tickets)
-        .set({ status: 'Cancelled' })
+        .set({ status: 'Cancelled', cancelReason: cancelReason || 'Khách hàng tự hủy' })
         .where(eq(tickets.id, id))
         .returning();
 

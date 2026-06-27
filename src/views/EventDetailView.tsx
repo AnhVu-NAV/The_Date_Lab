@@ -5,6 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import toast from 'react-hot-toast';
 
 export default function EventDetailView() {
   const { id } = useParams<{ id: string }>();
@@ -125,7 +126,7 @@ export default function EventDetailView() {
       setQrData(qr);
       setStep('qr');
     } catch (err: any) {
-      alert(err.message || (lng === 'vi' ? 'Đặt vé thất bại' : 'Booking failed'));
+      toast.error(err.message || (lng === 'vi' ? 'Đặt vé thất bại' : 'Booking failed'));
     } finally {
       setBookingLoading(false);
     }

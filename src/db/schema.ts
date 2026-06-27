@@ -78,6 +78,7 @@ export const tickets = pgTable('tickets', {
   addons: jsonb('addons').default([]),
   totalPrice: integer('total_price').default(0),
   status: text('status').default('Upcoming'), // Upcoming | Past | Cancelled
+  cancelReason: text('cancel_reason').default(''),
   paymentStatus: text('payment_status').default('pending'), // pending | paid | failed
   paymentRef: text('payment_ref').default(''),
   createdAt: timestamp('created_at').defaultNow(),

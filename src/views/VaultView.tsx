@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import toast from 'react-hot-toast';
+import { useDialog } from '../context/DialogContext';
 import ComingSoon from '../components/ComingSoon';
 
 interface Memory {
@@ -24,6 +26,7 @@ export default function VaultView() {
   const navigate = useNavigate();
   const { lng, t } = useLanguage();
   const { user, token } = useAuth();
+  const { confirm } = useDialog();
   
   const [memories, setMemories] = useState<Memory[]>([]);
   const [myTickets, setMyTickets] = useState<any[]>([]);
@@ -84,8 +87,9 @@ export default function VaultView() {
       setShowUploadModal(false);
       setUploadFile(null);
       setPreviewUrl('');
+      toast.success('Upload thành công!');
     } catch (err: any) {
-      alert(err.message || 'Upload thất bại');
+      toast.error(err.message || 'Upload thất bại');
     } finally {
       setUploading(false);
     }
@@ -97,20 +101,22 @@ export default function VaultView() {
       const updated = await api.updateMemory(selectedMemory.id, { isPublic: !selectedMemory.isPublic }, token);
       setMemories(prev => prev.map(m => m.id === updated.id ? { ...m, isPublic: updated.isPublic } : m));
       setSelectedMemory(prev => prev ? { ...prev, isPublic: updated.isPublic } : null);
+      toast.success(updated.isPublic ? 'Đã đổi thành Công khai' : 'Đã đổi thành Riêng tư');
     } catch (err: any) {
-      alert(err.message || 'Error updating memory');
+      toast.error(err.message || 'Error updating memory');
     }
   };
 
   const handleDeleteMemory = async () => {
     if (!selectedMemory || !token) return;
-    if (!confirm(lng === 'vi' ? 'Bạn có chắc muốn xóa ảnh này không?' : 'Are you sure you want to delete this photo?')) return;
+    if (!(await confirm(lng === 'vi' ? 'Bạn có chắc muốn xóa ảnh này không?' : 'Are you sure you want to delete this photo?'))) return;
     try {
       await api.deleteMemory(selectedMemory.id, token);
       setMemories(prev => prev.filter(m => m.id !== selectedMemory.id));
       setSelectedMemory(null);
+      toast.success('Đã xóa ảnh');
     } catch (err: any) {
-      alert(err.message || 'Error deleting memory');
+      toast.error(err.message || 'Error deleting memory');
     }
   };
 
