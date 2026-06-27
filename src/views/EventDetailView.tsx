@@ -295,10 +295,42 @@ export default function EventDetailView() {
                 <div className="p-5 space-y-5">
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-widest text-[#243d91]/60 mb-2">{t('numPeople')}</label>
-                    <div className="flex items-center justify-between bg-[#f0ede6]/50 rounded-xl p-2">
+                    <div className="flex items-center justify-between bg-[#f0ede6]/50 rounded-xl p-2 mb-2">
                       <button onClick={() => setQty(Math.max(1, qty - 1))} className="w-9 h-9 bg-white rounded-lg flex items-center justify-center shadow-sm hover:bg-[#e8539e] hover:text-white transition-all"><Minus size={16} /></button>
-                      <span className="font-display font-bold text-2xl text-[#243d91]">{qty}</span>
+                      <input 
+                        type="number" 
+                        value={qty || ''} 
+                        onChange={(e) => {
+                          if (e.target.value === '') {
+                             setQty('' as any);
+                             return;
+                          }
+                          let val = parseInt(e.target.value);
+                          if (isNaN(val)) return;
+                          const maxQty = (event.maxAttendees || 20) - (event.attendees || 0);
+                          setQty(Math.min(val, maxQty));
+                        }}
+                        onBlur={() => {
+                          if (!qty || qty < 1) setQty(1);
+                        }}
+                        className="font-display font-bold text-2xl text-[#243d91] bg-transparent text-center w-20 outline-none"
+                      />
                       <button onClick={() => setQty(Math.min((event.maxAttendees || 20) - (event.attendees || 0), qty + 1))} className="w-9 h-9 bg-white rounded-lg flex items-center justify-center shadow-sm hover:bg-[#4ecef5] hover:text-white transition-all"><Plus size={16} /></button>
+                    </div>
+                    <div className="flex gap-2 mb-2">
+                      {[5, 10, 20].map(n => (
+                        <button 
+                          key={n} 
+                          onClick={() => {
+                            const current = parseInt(qty as any) || 0;
+                            const maxQty = (event.maxAttendees || 20) - (event.attendees || 0);
+                            setQty(Math.min(current + n, maxQty));
+                          }}
+                          className="flex-1 py-1.5 bg-white border border-[#f0ede6] rounded-lg text-xs font-bold text-[#243d91] hover:border-[#e8539e] hover:text-[#e8539e] transition-all shadow-sm"
+                        >
+                          +{n}
+                        </button>
+                      ))}
                     </div>
                     {comboDiscounts.length > 0 && applicableDiscountPercent === 0 && (
                       <div className="mt-2 space-y-1">
