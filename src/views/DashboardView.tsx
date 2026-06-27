@@ -66,7 +66,7 @@ function AdminScanner({ token }: { token: string }) {
   useEffect(() => {
     // Only init if not already initialized
     if (!scannerRef.current) {
-      scannerRef.current = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
+      scannerRef.current = new Html5QrcodeScanner("reader", { fps: 10 }, false);
       scannerRef.current.render(onScanSuccess, onScanFailure);
     }
     
