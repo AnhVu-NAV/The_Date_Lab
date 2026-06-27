@@ -64,13 +64,13 @@ export default function EventDetailView() {
     comboDiscounts = [{ minTickets: event.comboMinTickets, discountPercent: event.comboDiscountPercent }];
   }
   
-  const sortedDescDiscounts = [...comboDiscounts].sort((a: any, b: any) => b.minTickets - a.minTickets);
-  const sortedAscDiscounts = [...comboDiscounts].sort((a: any, b: any) => a.minTickets - b.minTickets);
+  const sortedAscDiscounts = [...(event.comboDiscounts || [])].sort((a: any, b: any) => a.minTickets - b.minTickets);
+  const sortedDescDiscounts = [...(event.comboDiscounts || [])].sort((a: any, b: any) => b.minTickets - a.minTickets);
   
   let applicableDiscountPercent = 0;
   for (const tier of sortedDescDiscounts) {
     if (qty >= tier.minTickets) {
-      applicableDiscountPercent = tier.discountPercent;
+      applicableDiscountPercent = Math.round(tier.discountPercent);
       break;
     }
   }
@@ -80,12 +80,12 @@ export default function EventDetailView() {
   for (const tier of sortedAscDiscounts) {
     if (qty < tier.minTickets) {
       nextTierMinTickets = tier.minTickets;
-      nextTierDiscountPercent = tier.discountPercent;
+      nextTierDiscountPercent = Math.round(tier.discountPercent);
       break;
     }
   }
 
-  const discount = applicableDiscountPercent > 0 ? basePrice * (applicableDiscountPercent / 100) : 0;
+  const discount = Math.round(applicableDiscountPercent > 0 ? basePrice * (applicableDiscountPercent / 100) : 0);
   
   // Calculate selected addon cost
   const addonCost = dbAddons.filter(a => selectedAddons.has(a.id)).reduce((sum, a) => sum + (a.price || 0), 0);

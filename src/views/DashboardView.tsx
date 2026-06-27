@@ -162,7 +162,7 @@ function AdminEvents({ token }: { token: string }) {
 
   const handleSave = async () => {
     try {
-      const data = { ...form, price: Number(form.price), maxAttendees: Number(form.maxAttendees), forWho: [form.forWho], schedule: form.schedule, comboMinTickets: Number(form.comboMinTickets), comboDiscountPercent: Number(form.comboDiscountPercent), comboDiscounts: form.comboDiscounts.map(d => ({ minTickets: Number(d.minTickets), discountPercent: Number(d.discountPercent) })) };
+      const data = { ...form, price: Number(form.price), maxAttendees: Number(form.maxAttendees), forWho: [form.forWho], schedule: form.schedule, comboMinTickets: Number(form.comboMinTickets), comboDiscountPercent: Math.round(Number(form.comboDiscountPercent)), comboDiscounts: form.comboDiscounts.map(d => ({ minTickets: Number(d.minTickets), discountPercent: Math.round(Number(d.discountPercent)) })) };
       if (editEvent) await api.updateEvent(editEvent.id, data, token);
       else await api.createEvent(data, token);
       setShowForm(false); setEditEvent(null); setForm(emptyForm);
