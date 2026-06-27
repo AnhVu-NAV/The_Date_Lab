@@ -1715,7 +1715,7 @@ export default function DashboardView() {
   const isAdmin = user?.role === 'admin';
 
   const userTabs = [
-    { id: 'tickets', label: lng === 'vi' ? 'Vé của tôi' : 'My Tickets', icon: <Ticket size={16} /> },
+    { id: 'my-tickets', label: lng === 'vi' ? 'Vé của tôi' : 'My Tickets', icon: <Ticket size={16} /> },
     { id: 'profile', label: lng === 'vi' ? 'Hồ sơ' : 'Profile', icon: <User size={16} /> },
   ];
 
@@ -1738,10 +1738,13 @@ export default function DashboardView() {
 
   useEffect(() => {
     const hash = location.hash.replace('#', '');
-    if (hash && tabs.some(t => t.id === hash)) {
+    const allTabs = [...adminTabs, ...userTabs];
+    if (hash && allTabs.some(t => t.id === hash)) {
       setActiveTab(hash);
+    } else if (!hash) {
+      setActiveTab(isAdmin ? 'overview' : 'my-tickets');
     }
-  }, [location.hash, tabs]);
+  }, [location.hash, lng]);
 
   if (!user || !token) {
     navigate('/login');
@@ -1810,7 +1813,7 @@ export default function DashboardView() {
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
             </button>
             <h2 className="font-display font-bold text-xl md:text-2xl text-[#243d91] truncate">
-              {adminTabs.find(t => t.id === activeTab)?.label}
+              {[...adminTabs, ...userTabs].find(t => t.id === activeTab)?.label}
             </h2>
             <div className="ml-auto flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-[#f0ede6] flex items-center justify-center font-bold text-[#243d91]">
@@ -1838,6 +1841,8 @@ export default function DashboardView() {
                   {activeTab === 'users' && <AdminUsers token={token} />}
                   {activeTab === 'vault' && <AdminVault token={token} />}
                   {activeTab === 'settings' && <AdminSettings token={token} />}
+                  {activeTab === 'profile' && <UserProfile token={token} />}
+                  {activeTab === 'my-tickets' && <UserTickets token={token} />}
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -1885,7 +1890,7 @@ export default function DashboardView() {
       {/* Content */}
       <AnimatePresence mode="wait">
         <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }}>
-          {activeTab === 'tickets' && <UserTickets token={token} />}
+          {activeTab === 'my-tickets' && <UserTickets token={token} />}
           {activeTab === 'profile' && <UserProfile token={token} />}
         </motion.div>
       </AnimatePresence>
