@@ -37,9 +37,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (auth.role === 'admin') {
       // Admin can update payment_status and status
-      const { paymentStatus, status, cancelReason } = req.body;
+      const { paymentStatus, status, cancelReason, checkedInCount } = req.body;
       const [updated] = await db.update(tickets)
-        .set({ paymentStatus, status, cancelReason })
+        .set({ paymentStatus, status, cancelReason, checkedInCount })
         .where(eq(tickets.id, id))
         .returning();
         

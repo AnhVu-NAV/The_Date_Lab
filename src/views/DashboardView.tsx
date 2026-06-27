@@ -438,6 +438,20 @@ function AdminTickets({ token }: { token: string }) {
     setTickets(prev => prev.map(t => t.id === id ? { ...t, status: 'Cancelled', cancelReason: reason } : t));
   };
 
+  const handleCheckIn = async (id: string, current: number, max: number) => {
+    if (current >= max) return;
+    const ans = await prompt(lng === 'vi' ? `Nhập số lượng người muốn check-in thêm (Tối đa ${max - current}):` : `Enter check-in quantity (Max ${max - current}):`);
+    if (!ans) return;
+    const qty = parseInt(ans, 10);
+    if (isNaN(qty) || qty <= 0 || qty > max - current) {
+      toast.error(lng === 'vi' ? 'Số lượng không hợp lệ' : 'Invalid quantity');
+      return;
+    }
+    await api.updateTicket(id, { checkedInCount: current + qty }, token);
+    toast.success(lng === 'vi' ? `Đã check-in ${qty} người` : `Checked in ${qty} people`);
+    setTickets(prev => prev.map(t => t.id === id ? { ...t, checkedInCount: current + qty } : t));
+  };
+
   const pendingTickets = tickets.filter(t => t.paymentStatus === 'pending' && t.status !== 'Cancelled');
   const paidTickets = tickets.filter(t => t.paymentStatus === 'paid' && t.status !== 'Cancelled');
 
@@ -498,7 +512,7 @@ function AdminTickets({ token }: { token: string }) {
         <div className="bg-white rounded-2xl border border-[#f0ede6] overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-emerald-50"><tr>
-              {['Sự kiện', 'Mã CK', 'Số lượng', 'Tổng tiền', 'Ngày đặt'].map(h => (
+              {['Sự kiện', 'Mã CK', 'Số lượng', 'Đã Check-in', 'Ngày đặt', ''].map(h => (
                 <th key={h} className="text-left px-4 py-3 text-xs font-bold uppercase tracking-widest text-emerald-700/60">{h}</th>
               ))}
             </tr></thead>
@@ -508,8 +522,15 @@ function AdminTickets({ token }: { token: string }) {
                   <td className="px-4 py-3 font-semibold text-[#243d91]">{tk.eventTitle}</td>
                   <td className="px-4 py-3 font-mono text-xs">{tk.paymentRef}</td>
                   <td className="px-4 py-3 font-bold text-center">{tk.quantity}</td>
-                  <td className="px-4 py-3 font-bold text-[#e8539e]">{(tk.totalPrice || 0).toLocaleString('vi-VN')}đ</td>
+                  <td className="px-4 py-3 font-bold text-center text-[#e8539e]">{tk.checkedInCount || 0}/{tk.quantity}</td>
                   <td className="px-4 py-3 text-xs text-[#243d91]/50">{tk.createdAt ? new Date(tk.createdAt).toLocaleDateString('vi-VN') : ''}</td>
+                  <td className="px-4 py-3">
+                    {(tk.checkedInCount || 0) < tk.quantity && (
+                      <button onClick={() => handleCheckIn(tk.id, tk.checkedInCount || 0, tk.quantity)} className="flex items-center gap-1 px-3 py-1.5 bg-[#e8539e] text-white text-xs font-bold rounded-lg hover:bg-[#e8539e]/90 transition-all ml-auto">
+                        Check-in
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

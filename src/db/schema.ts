@@ -81,6 +81,7 @@ export const tickets = pgTable('tickets', {
   cancelReason: text('cancel_reason').default(''),
   paymentStatus: text('payment_status').default('pending'), // pending | paid | failed
   paymentRef: text('payment_ref').default(''),
+  checkedInCount: integer('checked_in_count').default(0),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
