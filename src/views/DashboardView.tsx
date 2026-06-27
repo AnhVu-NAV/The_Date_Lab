@@ -1701,6 +1701,7 @@ export default function DashboardView() {
 
   const tabs = isAdmin ? adminTabs : userTabs;
   const [activeTab, setActiveTab] = useState(tabs[0].id);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   if (!user || !token) {
     navigate('/login');
@@ -1710,24 +1711,34 @@ export default function DashboardView() {
   // Standalone Layout for Admin
   if (isAdmin) {
     return (
-      <div className="flex h-screen w-full bg-[#f0ede6] overflow-hidden">
+      <div className="flex h-screen w-full bg-[#f0ede6] overflow-hidden relative">
+        {/* MOBILE OVERLAY */}
+        {mobileMenuOpen && (
+          <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setMobileMenuOpen(false)} />
+        )}
+        
         {/* SIDEBAR */}
-        <div className="w-64 bg-[#243d91] text-white flex flex-col shrink-0">
+        <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#243d91] text-white flex flex-col shrink-0 transform transition-transform duration-300 md:relative md:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="p-6">
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center overflow-hidden">
-                <img src={Logo} alt="TDL Logo" className="w-full h-full object-contain" />
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center overflow-hidden shrink-0">
+                  <img src={Logo} alt="TDL Logo" className="w-full h-full object-contain" />
+                </div>
+                <div>
+                  <h1 className="font-display font-bold text-lg leading-tight">Admin<br/><span className="text-[#4ecef5]">Panel</span></h1>
+                </div>
               </div>
-              <div>
-                <h1 className="font-display font-bold text-lg leading-tight">Admin<br/><span className="text-[#4ecef5]">Panel</span></h1>
-              </div>
+              <button className="md:hidden text-white/60 hover:text-white" onClick={() => setMobileMenuOpen(false)}>
+                <X size={24} />
+              </button>
             </div>
             
-            <div className="space-y-1">
+            <div className="space-y-1 overflow-y-auto max-h-[60vh] custom-scrollbar pr-2">
               {adminTabs.map(tab => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => { setActiveTab(tab.id); setMobileMenuOpen(false); }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
                     activeTab === tab.id
                       ? 'bg-[#e8539e] text-white shadow-lg shadow-[#e8539e]/20'
@@ -1751,10 +1762,14 @@ export default function DashboardView() {
         </div>
 
         {/* CONTENT AREA */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-[#faf9f7] rounded-l-3xl shadow-[-10px_0_30px_rgba(0,0,0,0.05)]">
+        <div className="flex-1 flex flex-col overflow-hidden bg-[#faf9f7] md:rounded-l-3xl shadow-[-10px_0_30px_rgba(0,0,0,0.05)] w-full">
           {/* Header */}
-          <div className="h-20 bg-white border-b border-[#f0ede6] flex items-center px-8 shrink-0">
-            <h2 className="font-display font-bold text-2xl text-[#243d91]">
+          <div className="h-20 bg-white border-b border-[#f0ede6] flex items-center px-4 md:px-8 shrink-0">
+            <button className="md:hidden mr-4 text-[#243d91]" onClick={() => setMobileMenuOpen(true)}>
+              {/* Hamburger Icon directly coded to avoid new import */}
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+            </button>
+            <h2 className="font-display font-bold text-xl md:text-2xl text-[#243d91] truncate">
               {adminTabs.find(t => t.id === activeTab)?.label}
             </h2>
             <div className="ml-auto flex items-center gap-3">
