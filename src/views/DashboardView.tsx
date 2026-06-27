@@ -50,9 +50,18 @@ const inputCls = "w-full px-4 py-2.5 rounded-xl border-2 border-[#f0ede6] text-s
 function AdminScanner({ token }: { token: string }) {
   const { lng } = useLanguage();
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const resumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [scannedTicket, setScannedTicket] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const { prompt } = useDialog();
+
+  const startResumeTimer = () => {
+    if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
+    resumeTimeoutRef.current = setTimeout(() => {
+      setScannedTicket(null);
+      if (scannerRef.current) scannerRef.current.resume();
+    }, 4000); // Resume after 4 seconds
+  };
 
   useEffect(() => {
     // Only init if not already initialized
@@ -66,6 +75,7 @@ function AdminScanner({ token }: { token: string }) {
         scannerRef.current.clear().catch(console.error);
         scannerRef.current = null;
       }
+      if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
     };
   }, []);
 
@@ -84,13 +94,15 @@ function AdminScanner({ token }: { token: string }) {
         const max = ticket.quantity;
 
         if (current >= max) {
-          toast.error(lng === 'vi' ? 'Vé đã check-in đủ số lượng!' : 'Ticket fully checked in!');
-          setScannedTicket(ticket);
+          toast.error(lng === 'vi' ? 'Vé hết hiệu lực (Đã dùng hết)!' : 'Ticket invalid (Fully checked in)!');
+          setScannedTicket({ ...ticket, isInvalid: true });
+          startResumeTimer();
         } else {
           // Auto check-in 1 person
           await api.updateTicket(ticket.id, { checkedInCount: current + 1 }, token);
           toast.success(lng === 'vi' ? 'Check-in thành công 1 người!' : 'Checked in 1 person!');
           setScannedTicket({ ...ticket, checkedInCount: current + 1 });
+          startResumeTimer();
         }
       } else {
         toast.error(lng === 'vi' ? 'Không tìm thấy vé hợp lệ' : 'Invalid ticket');
@@ -120,8 +132,10 @@ function AdminScanner({ token }: { token: string }) {
       await api.updateTicket(scannedTicket.id, { checkedInCount: current + qty }, token);
       toast.success(lng === 'vi' ? `Đã check-in ${qty} người` : `Checked in ${qty} people`);
       setScannedTicket({ ...scannedTicket, checkedInCount: current + qty });
+      startResumeTimer();
     } catch (e) {
       toast.error(lng === 'vi' ? 'Lỗi khi check-in' : 'Error checking in');
+      startResumeTimer();
     }
   };
 
@@ -134,10 +148,14 @@ function AdminScanner({ token }: { token: string }) {
       </div>
 
       {scannedTicket && (
-        <div className="bg-white p-6 rounded-3xl border-2 border-emerald-200 shadow-md">
-          <div className="flex items-center gap-3 mb-4 text-emerald-600">
-            <CheckCircle2 size={24} />
-            <h4 className="font-bold text-lg">{lng === 'vi' ? 'Thông tin vé' : 'Ticket Info'}</h4>
+        <div className={`bg-white p-6 rounded-3xl border-2 shadow-md ${scannedTicket.isInvalid ? 'border-red-200' : 'border-emerald-200'}`}>
+          <div className={`flex items-center gap-3 mb-4 ${scannedTicket.isInvalid ? 'text-red-500' : 'text-emerald-600'}`}>
+            {scannedTicket.isInvalid ? <AlertCircle size={24} /> : <CheckCircle2 size={24} />}
+            <h4 className="font-bold text-lg">
+              {scannedTicket.isInvalid 
+                ? (lng === 'vi' ? 'Vé hết hiệu lực' : 'Invalid Ticket')
+                : (lng === 'vi' ? 'Thông tin vé' : 'Ticket Info')}
+            </h4>
           </div>
           <div className="space-y-3">
             <p><span className="text-gray-500 font-medium">Sự kiện:</span> <strong className="text-[#243d91]">{scannedTicket.eventTitle}</strong></p>
@@ -152,8 +170,13 @@ function AdminScanner({ token }: { token: string }) {
               <div className="pt-4 flex flex-col gap-3">
                 <button 
                   onClick={async () => {
+                    if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
                     const ans = await prompt(`Nhập thêm số lượng (Còn ${scannedTicket.quantity - (scannedTicket.checkedInCount || 0)} suất):`);
-                    if (ans && !isNaN(parseInt(ans))) handleCheckIn(parseInt(ans));
+                    if (ans && !isNaN(parseInt(ans))) {
+                      handleCheckIn(parseInt(ans));
+                    } else {
+                      startResumeTimer();
+                    }
                   }}
                   className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-bold transition-all border border-gray-200"
                 >
@@ -168,12 +191,13 @@ function AdminScanner({ token }: { token: string }) {
             
             <button 
               onClick={() => {
+                if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
                 setScannedTicket(null);
                 if (scannerRef.current) scannerRef.current.resume();
               }}
               className="w-full mt-4 bg-[#243d91] hover:bg-[#243d91]/90 text-white font-bold py-3 rounded-xl transition-all shadow-md"
             >
-              {lng === 'vi' ? 'Tiếp tục quét' : 'Scan next ticket'}
+              {lng === 'vi' ? 'Tiếp tục quét ngay (hoặc đợi 4s)' : 'Scan next now (or wait 4s)'}
             </button>
           </div>
         </div>
