@@ -60,17 +60,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const sortedDescDiscounts = [...comboDiscounts].sort((a: any, b: any) => b.minTickets - a.minTickets);
       for (const tier of sortedDescDiscounts) {
         if (qtyNum >= tier.minTickets) {
-          applicableDiscountPercent = tier.discountPercent;
+          applicableDiscountPercent = Math.round(tier.discountPercent);
           break;
         }
       }
     } else if ((event.comboMinTickets || 0) > 0 && (event.comboDiscountPercent || 0) > 0) {
       if (qtyNum >= (event.comboMinTickets || 0)) {
-        applicableDiscountPercent = event.comboDiscountPercent || 0;
+        applicableDiscountPercent = Math.round(event.comboDiscountPercent || 0);
       }
     }
     
-    const discountAmount = applicableDiscountPercent > 0 ? calculatedTotalPrice * (applicableDiscountPercent / 100) : 0;
+    const discountAmount = applicableDiscountPercent > 0 ? Math.round(calculatedTotalPrice * (applicableDiscountPercent / 100)) : 0;
     calculatedTotalPrice -= discountAmount;
 
     // Verify addons and add their cost
