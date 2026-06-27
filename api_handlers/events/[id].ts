@@ -27,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const {
       title, type, date, time, location, locationType,
       price, maxAttendees, imageUrl, status, forWho, description, schedule, addonIds,
-      comboMinTickets, comboDiscountPercent
+      comboMinTickets, comboDiscountPercent, comboDiscounts
     } = req.body;
 
     const [updated] = await db.update(events)
@@ -38,6 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         imageUrl, status, forWho, description, schedule, addonIds,
         comboMinTickets: comboMinTickets !== undefined ? Number(comboMinTickets) : undefined,
         comboDiscountPercent: comboDiscountPercent !== undefined ? Number(comboDiscountPercent) : undefined,
+        comboDiscounts,
       })
       .where(eq(events.id, id))
       .returning();

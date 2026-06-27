@@ -60,9 +60,34 @@ export default function EventDetailView() {
   );
 
   const basePrice = event.price * qty;
-  const minTickets = event.comboMinTickets || 0;
-  const discPercent = event.comboDiscountPercent || 0;
-  const discount = (minTickets > 0 && qty >= minTickets) ? basePrice * (discPercent / 100) : 0;
+  
+  let comboDiscounts = Array.isArray(event.comboDiscounts) ? event.comboDiscounts : [];
+  if (comboDiscounts.length === 0 && event.comboMinTickets > 0 && event.comboDiscountPercent > 0) {
+    comboDiscounts = [{ minTickets: event.comboMinTickets, discountPercent: event.comboDiscountPercent }];
+  }
+  
+  const sortedDescDiscounts = [...comboDiscounts].sort((a: any, b: any) => b.minTickets - a.minTickets);
+  const sortedAscDiscounts = [...comboDiscounts].sort((a: any, b: any) => a.minTickets - b.minTickets);
+  
+  let applicableDiscountPercent = 0;
+  for (const tier of sortedDescDiscounts) {
+    if (qty >= tier.minTickets) {
+      applicableDiscountPercent = tier.discountPercent;
+      break;
+    }
+  }
+
+  let nextTierMinTickets = 0;
+  let nextTierDiscountPercent = 0;
+  for (const tier of sortedAscDiscounts) {
+    if (qty < tier.minTickets) {
+      nextTierMinTickets = tier.minTickets;
+      nextTierDiscountPercent = tier.discountPercent;
+      break;
+    }
+  }
+
+  const discount = applicableDiscountPercent > 0 ? basePrice * (applicableDiscountPercent / 100) : 0;
   
   // Calculate selected addon cost
   const addonCost = dbAddons.filter(a => selectedAddons.has(a.id)).reduce((sum, a) => sum + (a.price || 0), 0);
@@ -277,16 +302,27 @@ export default function EventDetailView() {
                       <span className="font-display font-bold text-2xl text-[#243d91]">{qty}</span>
                       <button onClick={() => setQty(Math.min(event.maxAttendees || 20, qty + 1))} className="w-9 h-9 bg-white rounded-lg flex items-center justify-center shadow-sm hover:bg-[#4ecef5] hover:text-white transition-all"><Plus size={16} /></button>
                     </div>
-                    {minTickets > 0 && discPercent > 0 && (
-                      qty >= minTickets ? (
-                        <p className="mt-2 text-xs font-bold text-[#e8539e] bg-[#e8539e]/10 px-3 py-2 rounded-lg flex items-center gap-1.5">
-                          <Sparkles size={12} /> {lng === 'vi' ? `Combo ${qty} người — giảm ${discPercent}%!` : `${qty}-person combo — ${discPercent}% off!`}
+                    {comboDiscounts.length > 0 && applicableDiscountPercent === 0 && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-xs font-bold text-[#243d91]/60 uppercase tracking-widest mb-1">{lng === 'vi' ? 'Các mức ưu đãi Combo:' : 'Combo Deals:'}</p>
+                        {sortedAscDiscounts.map((tier: any, idx: number) => (
+                          <p key={idx} className="text-xs font-bold text-[#243d91]/80 bg-[#f0ede6]/50 px-3 py-2 rounded-lg flex items-center gap-1.5 border border-[#f0ede6]">
+                            <Sparkles size={12} className="text-[#4ecef5]" /> {lng === 'vi' ? `Mua từ ${tier.minTickets} vé — giảm ${tier.discountPercent}%` : `Buy ${tier.minTickets}+ tickets — ${tier.discountPercent}% off`}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    {applicableDiscountPercent > 0 && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-xs font-bold text-[#e8539e] bg-[#e8539e]/10 px-3 py-2 rounded-lg flex items-center gap-1.5">
+                          <Sparkles size={12} /> {lng === 'vi' ? `Combo ${qty} người — giảm ${applicableDiscountPercent}%!` : `${qty}-person combo — ${applicableDiscountPercent}% off!`}
                         </p>
-                      ) : (
-                        <p className="mt-2 text-xs font-bold text-[#243d91]/60 bg-[#f0ede6]/50 px-3 py-2 rounded-lg flex items-center gap-1.5">
-                          <Sparkles size={12} className="text-[#4ecef5]" /> {lng === 'vi' ? `Khuyến mãi: Mua từ ${minTickets} vé để được giảm ${discPercent}%!` : `Promo: Buy ${minTickets}+ tickets for ${discPercent}% off!`}
-                        </p>
-                      )
+                        {nextTierMinTickets > 0 && (
+                          <p className="text-xs font-bold text-[#243d91]/60 bg-[#f0ede6]/50 px-3 py-1.5 rounded-lg flex items-center gap-1.5 border border-dashed border-[#f0ede6]">
+                            <Sparkles size={12} className="text-[#4ecef5]" /> {lng === 'vi' ? `Mua thêm ${nextTierMinTickets - qty} vé nữa để được giảm ${nextTierDiscountPercent}%!` : `Buy ${nextTierMinTickets - qty} more tickets for ${nextTierDiscountPercent}% off!`}
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
 

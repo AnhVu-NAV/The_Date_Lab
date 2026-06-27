@@ -39,6 +39,7 @@ export const events = pgTable('events', {
   addonIds: text('addon_ids').array().default([]),
   comboMinTickets: integer('combo_min_tickets').default(0),
   comboDiscountPercent: integer('combo_discount_percent').default(0),
+  comboDiscounts: jsonb('combo_discounts').default([]),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
