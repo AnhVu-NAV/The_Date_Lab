@@ -298,7 +298,7 @@ export default function EventDetailView() {
                     <div className="flex items-center justify-between bg-[#f0ede6]/50 rounded-xl p-2">
                       <button onClick={() => setQty(Math.max(1, qty - 1))} className="w-9 h-9 bg-white rounded-lg flex items-center justify-center shadow-sm hover:bg-[#e8539e] hover:text-white transition-all"><Minus size={16} /></button>
                       <span className="font-display font-bold text-2xl text-[#243d91]">{qty}</span>
-                      <button onClick={() => setQty(Math.min(event.maxAttendees || 20, qty + 1))} className="w-9 h-9 bg-white rounded-lg flex items-center justify-center shadow-sm hover:bg-[#4ecef5] hover:text-white transition-all"><Plus size={16} /></button>
+                      <button onClick={() => setQty(Math.min((event.maxAttendees || 20) - (event.attendees || 0), qty + 1))} className="w-9 h-9 bg-white rounded-lg flex items-center justify-center shadow-sm hover:bg-[#4ecef5] hover:text-white transition-all"><Plus size={16} /></button>
                     </div>
                     {comboDiscounts.length > 0 && applicableDiscountPercent === 0 && (
                       <div className="mt-2 space-y-1">
