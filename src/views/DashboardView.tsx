@@ -66,7 +66,15 @@ function AdminScanner({ token }: { token: string }) {
   useEffect(() => {
     // Only init if not already initialized
     if (!scannerRef.current) {
-      scannerRef.current = new Html5QrcodeScanner("reader", { fps: 10 }, false);
+      scannerRef.current = new Html5QrcodeScanner("reader", { 
+        fps: 10,
+        qrbox: (viewfinderWidth, viewfinderHeight) => {
+          const minEdgePercentage = 0.7; // 70% of screen size
+          const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+          const qrboxSize = Math.floor(minEdgeSize * minEdgePercentage);
+          return { width: qrboxSize, height: qrboxSize };
+        }
+      }, false);
       scannerRef.current.render(onScanSuccess, onScanFailure);
     }
     
