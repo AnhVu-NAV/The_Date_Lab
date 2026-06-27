@@ -38,6 +38,8 @@ export const api = {
   // ─── Tickets ───────────────────────────────────────────────────────────────
   getTickets: (token: string) =>
     fetch(`${BASE}/api/tickets`, { headers: authHeaders(token) }).then(r => handleResponse<any[]>(r)),
+  getTicket: (id: string, token: string) =>
+    fetch(`${BASE}/api/tickets/${id}`, { headers: authHeaders(token) }).then(r => handleResponse<any>(r)),
   bookTicket: (data: any, token: string) =>
     fetch(`${BASE}/api/tickets`, {
       method: 'POST', headers: authHeaders(token), body: JSON.stringify(data),

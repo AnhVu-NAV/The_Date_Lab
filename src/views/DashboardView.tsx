@@ -13,6 +13,7 @@ import { api } from '../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import toast from 'react-hot-toast';
 import { useDialog } from '../context/DialogContext';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 import Logo from '../assets/Logo/2.png';
 
 // ─── Shared Form Modal ───────────────────────────────────────────────────────
@@ -44,6 +45,138 @@ function FormField({ label, children }: { label: string; children: React.ReactNo
 }
 
 const inputCls = "w-full px-4 py-2.5 rounded-xl border-2 border-[#f0ede6] text-sm font-semibold text-[#243d91] outline-none focus:border-[#e8539e] transition-all bg-[#f0ede6]/20";
+
+// ─── Admin: Scanner ────────────────────────────────────────────────────────────
+function AdminScanner({ token }: { token: string }) {
+  const { lng } = useLanguage();
+  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const [scannedTicket, setScannedTicket] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const { prompt } = useDialog();
+
+  useEffect(() => {
+    // Only init if not already initialized
+    if (!scannerRef.current) {
+      scannerRef.current = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
+      scannerRef.current.render(onScanSuccess, onScanFailure);
+    }
+    
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(console.error);
+        scannerRef.current = null;
+      }
+    };
+  }, []);
+
+  const onScanSuccess = async (decodedText: string) => {
+    if (loading || scannedTicket?.id === decodedText) return;
+    
+    if (scannerRef.current) {
+      scannerRef.current.pause(true);
+    }
+    
+    setLoading(true);
+    try {
+      const ticket = await api.getTicket(decodedText, token);
+      if (ticket) {
+        setScannedTicket(ticket);
+        toast.success(lng === 'vi' ? 'Quét vé thành công!' : 'Ticket scanned successfully!');
+      } else {
+        toast.error(lng === 'vi' ? 'Không tìm thấy vé hợp lệ' : 'Invalid ticket');
+        if (scannerRef.current) scannerRef.current.resume();
+      }
+    } catch (e) {
+      toast.error(lng === 'vi' ? 'Lỗi khi quét vé' : 'Error scanning ticket');
+      if (scannerRef.current) scannerRef.current.resume();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onScanFailure = (error: any) => {};
+
+  const handleCheckIn = async (qty: number) => {
+    if (!scannedTicket) return;
+    const current = scannedTicket.checkedInCount || 0;
+    const max = scannedTicket.quantity;
+    
+    if (current + qty > max) {
+      toast.error(lng === 'vi' ? 'Số lượng vượt quá cho phép' : 'Exceeds allowed quantity');
+      return;
+    }
+    
+    try {
+      await api.updateTicket(scannedTicket.id, { checkedInCount: current + qty }, token);
+      toast.success(lng === 'vi' ? `Đã check-in ${qty} người` : `Checked in ${qty} people`);
+      setScannedTicket({ ...scannedTicket, checkedInCount: current + qty });
+    } catch (e) {
+      toast.error(lng === 'vi' ? 'Lỗi khi check-in' : 'Error checking in');
+    }
+  };
+
+  return (
+    <div className="space-y-6 max-w-2xl mx-auto">
+      <h3 className="font-bold text-xl text-[#243d91] text-center mb-6">{lng === 'vi' ? 'Quét mã QR Check-in' : 'QR Check-in Scanner'}</h3>
+      
+      <div className="bg-white p-4 rounded-3xl border border-[#f0ede6] shadow-sm overflow-hidden">
+        <div id="reader" className="w-full rounded-2xl overflow-hidden"></div>
+      </div>
+
+      {scannedTicket && (
+        <div className="bg-white p-6 rounded-3xl border-2 border-emerald-200 shadow-md">
+          <div className="flex items-center gap-3 mb-4 text-emerald-600">
+            <CheckCircle2 size={24} />
+            <h4 className="font-bold text-lg">{lng === 'vi' ? 'Thông tin vé' : 'Ticket Info'}</h4>
+          </div>
+          <div className="space-y-3">
+            <p><span className="text-gray-500 font-medium">Sự kiện:</span> <strong className="text-[#243d91]">{scannedTicket.eventTitle}</strong></p>
+            <p><span className="text-gray-500 font-medium">Người đặt:</span> <strong className="text-[#243d91]">{scannedTicket.userId?.slice(0, 8)}...</strong></p>
+            <p><span className="text-gray-500 font-medium">Đã thanh toán:</span> <strong className="text-[#e8539e]">{(scannedTicket.totalPrice || 0).toLocaleString('vi-VN')}đ</strong></p>
+            <div className="bg-gray-50 p-4 rounded-xl flex items-center justify-between border border-gray-100">
+              <span className="font-bold text-gray-600">Tiến độ Check-in:</span>
+              <span className="text-xl font-bold text-[#e8539e]">{scannedTicket.checkedInCount || 0} / {scannedTicket.quantity}</span>
+            </div>
+            
+            {(scannedTicket.checkedInCount || 0) < scannedTicket.quantity ? (
+              <div className="pt-4 flex gap-3">
+                <button 
+                  onClick={() => handleCheckIn(1)}
+                  className="flex-1 bg-[#243d91] hover:bg-[#243d91]/90 text-white py-3 rounded-xl font-bold transition-all shadow-md"
+                >
+                  {lng === 'vi' ? '+1 Check-in' : '+1 Check-in'}
+                </button>
+                <button 
+                  onClick={async () => {
+                    const ans = await prompt(`Nhập số lượng (Còn ${scannedTicket.quantity - (scannedTicket.checkedInCount || 0)} suất):`);
+                    if (ans && !isNaN(parseInt(ans))) handleCheckIn(parseInt(ans));
+                  }}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 rounded-xl font-bold transition-all border border-gray-200"
+                >
+                  {lng === 'vi' ? 'Tùy chọn...' : 'Custom...'}
+                </button>
+              </div>
+            ) : (
+              <div className="pt-4 text-center text-emerald-600 font-bold bg-emerald-50 py-3 rounded-xl">
+                {lng === 'vi' ? 'Vé đã check-in đủ số lượng!' : 'Ticket fully checked in!'}
+              </div>
+            )}
+            
+            <button 
+              onClick={() => {
+                setScannedTicket(null);
+                if (scannerRef.current) scannerRef.current.resume();
+              }}
+              className="w-full mt-4 text-gray-500 font-semibold hover:text-gray-800 py-2 transition-all"
+            >
+              {lng === 'vi' ? 'Quét vé khác' : 'Scan another ticket'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Admin: Overview ─────────────────────────────────────────────────────────
 function AdminOverview({ token }: { token: string }) {
@@ -1551,6 +1684,7 @@ export default function DashboardView() {
 
   const adminTabs = [
     { id: 'overview', label: lng === 'vi' ? 'Tổng quan' : 'Overview', icon: <LayoutDashboard size={18} /> },
+    { id: 'scanner', label: lng === 'vi' ? 'Quét QR' : 'Scanner', icon: <Camera size={18} /> },
     { id: 'events', label: lng === 'vi' ? 'Sự kiện' : 'Events', icon: <CalendarDays size={18} /> },
     { id: 'tickets', label: lng === 'vi' ? 'Vé & Thanh toán' : 'Tickets & Pay', icon: <Ticket size={18} /> },
     { id: 'tarot', label: 'Tarot', icon: <Sparkles size={18} /> },
@@ -1636,6 +1770,7 @@ export default function DashboardView() {
               <AnimatePresence mode="wait">
                 <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.15 }}>
                   {activeTab === 'overview' && <AdminOverview token={token} />}
+                  {activeTab === 'scanner' && <AdminScanner token={token} />}
                   {activeTab === 'events' && <AdminEvents token={token} />}
                   {activeTab === 'tickets' && <AdminTickets token={token} />}
                   {activeTab === 'tarot' && <AdminTarot token={token} />}
