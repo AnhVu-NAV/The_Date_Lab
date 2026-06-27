@@ -80,14 +80,24 @@ function AdminScanner({ token }: { token: string }) {
     try {
       const ticket = await api.getTicket(decodedText, token);
       if (ticket) {
-        setScannedTicket(ticket);
-        toast.success(lng === 'vi' ? 'Quét vé thành công!' : 'Ticket scanned successfully!');
+        const current = ticket.checkedInCount || 0;
+        const max = ticket.quantity;
+
+        if (current >= max) {
+          toast.error(lng === 'vi' ? 'Vé đã check-in đủ số lượng!' : 'Ticket fully checked in!');
+          setScannedTicket(ticket);
+        } else {
+          // Auto check-in 1 person
+          await api.updateTicket(ticket.id, { checkedInCount: current + 1 }, token);
+          toast.success(lng === 'vi' ? 'Check-in thành công 1 người!' : 'Checked in 1 person!');
+          setScannedTicket({ ...ticket, checkedInCount: current + 1 });
+        }
       } else {
         toast.error(lng === 'vi' ? 'Không tìm thấy vé hợp lệ' : 'Invalid ticket');
         if (scannerRef.current) scannerRef.current.resume();
       }
     } catch (e) {
-      toast.error(lng === 'vi' ? 'Lỗi khi quét vé' : 'Error scanning ticket');
+      toast.error(lng === 'vi' ? 'Lỗi khi xử lý vé' : 'Error processing ticket');
       if (scannerRef.current) scannerRef.current.resume();
     } finally {
       setLoading(false);
@@ -139,21 +149,15 @@ function AdminScanner({ token }: { token: string }) {
             </div>
             
             {(scannedTicket.checkedInCount || 0) < scannedTicket.quantity ? (
-              <div className="pt-4 flex gap-3">
-                <button 
-                  onClick={() => handleCheckIn(1)}
-                  className="flex-1 bg-[#243d91] hover:bg-[#243d91]/90 text-white py-3 rounded-xl font-bold transition-all shadow-md"
-                >
-                  {lng === 'vi' ? '+1 Check-in' : '+1 Check-in'}
-                </button>
+              <div className="pt-4 flex flex-col gap-3">
                 <button 
                   onClick={async () => {
-                    const ans = await prompt(`Nhập số lượng (Còn ${scannedTicket.quantity - (scannedTicket.checkedInCount || 0)} suất):`);
+                    const ans = await prompt(`Nhập thêm số lượng (Còn ${scannedTicket.quantity - (scannedTicket.checkedInCount || 0)} suất):`);
                     if (ans && !isNaN(parseInt(ans))) handleCheckIn(parseInt(ans));
                   }}
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 rounded-xl font-bold transition-all border border-gray-200"
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-bold transition-all border border-gray-200"
                 >
-                  {lng === 'vi' ? 'Tùy chọn...' : 'Custom...'}
+                  {lng === 'vi' ? 'Nhập thêm tùy chọn...' : 'Check-in more...'}
                 </button>
               </div>
             ) : (
@@ -167,9 +171,9 @@ function AdminScanner({ token }: { token: string }) {
                 setScannedTicket(null);
                 if (scannerRef.current) scannerRef.current.resume();
               }}
-              className="w-full mt-4 text-gray-500 font-semibold hover:text-gray-800 py-2 transition-all"
+              className="w-full mt-4 bg-[#243d91] hover:bg-[#243d91]/90 text-white font-bold py-3 rounded-xl transition-all shadow-md"
             >
-              {lng === 'vi' ? 'Quét vé khác' : 'Scan another ticket'}
+              {lng === 'vi' ? 'Tiếp tục quét' : 'Scan next ticket'}
             </button>
           </div>
         </div>
