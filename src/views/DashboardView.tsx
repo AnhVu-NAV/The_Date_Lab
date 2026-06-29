@@ -302,7 +302,7 @@ function AdminEvents({ token }: { token: string }) {
   const [uploadingImg, setUploadingImg] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const emptyForm = { title: '', type: 'Gốm', date: '', time: '', location: '', locationType: 'Fixed', price: '', maxAttendees: '20', imageUrl: '', status: 'Available', description: '', forWho: 'Couple', addonIds: [] as string[], schedule: [] as { duration: string; activity: string }[], comboMinTickets: '0', comboDiscountPercent: '0', comboDiscounts: [] as { minTickets: string; discountPercent: string; fixedPrice: string }[] };
+  const emptyForm = { title: '', type: 'Gốm', date: '', time: '', location: '', locationType: 'Fixed', price: '', maxAttendees: '20', imageUrl: '', status: 'Available', description: '', forWho: 'Couple', addonIds: [] as string[], schedule: [] as { duration: string; activity: string }[], comboMinTickets: '0', comboDiscountPercent: '0', comboDiscounts: [] as { minTickets: string; discountPercent: string; fixedPrice: string; type?: 'percent' | 'fixed' }[] };
   const [form, setForm] = useState(emptyForm);
   const [addons, setAddons] = useState<any[]>([]);
 
@@ -331,7 +331,11 @@ function AdminEvents({ token }: { token: string }) {
 
   const handleSave = async () => {
     try {
-      const data = { ...form, price: Number(form.price), maxAttendees: Number(form.maxAttendees), forWho: [form.forWho], schedule: form.schedule, comboMinTickets: Number(form.comboMinTickets), comboDiscountPercent: Math.round(Number(form.comboDiscountPercent)), comboDiscounts: form.comboDiscounts.map(d => ({ minTickets: Number(d.minTickets), discountPercent: Math.round(Number(d.discountPercent)), fixedPrice: Number(d.fixedPrice) })) };
+      const validComboDiscounts = form.comboDiscounts
+        .filter(d => Number(d.minTickets) > 0 && (Number(d.discountPercent) > 0 || Number(d.fixedPrice) > 0))
+        .map(d => ({ minTickets: Number(d.minTickets), discountPercent: Math.round(Number(d.discountPercent)), fixedPrice: Number(d.fixedPrice) }));
+
+      const data = { ...form, price: Number(form.price), maxAttendees: Number(form.maxAttendees), forWho: [form.forWho], schedule: form.schedule, comboMinTickets: Number(form.comboMinTickets), comboDiscountPercent: Math.round(Number(form.comboDiscountPercent)), comboDiscounts: validComboDiscounts };
       if (editEvent) await api.updateEvent(editEvent.id, data, token);
       else await api.createEvent(data, token);
       setShowForm(false); setEditEvent(null); setForm(emptyForm);
@@ -349,7 +353,7 @@ function AdminEvents({ token }: { token: string }) {
 
   const openEdit = (ev: any) => {
     setEditEvent(ev);
-    setForm({ title: ev.title, type: ev.type || '', date: ev.date || '', time: ev.time || '', location: ev.location || '', locationType: ev.locationType || 'Fixed', price: String(ev.price || ''), maxAttendees: String(ev.maxAttendees || 20), imageUrl: ev.imageUrl || '', status: ev.status || 'Available', description: ev.description || '', forWho: (ev.forWho || ['Couple'])[0], addonIds: ev.addonIds || [], schedule: Array.isArray(ev.schedule) ? ev.schedule : [], comboMinTickets: String(ev.comboMinTickets || 0), comboDiscountPercent: String(ev.comboDiscountPercent || 0), comboDiscounts: Array.isArray(ev.comboDiscounts) ? ev.comboDiscounts.map((d: any) => ({ minTickets: String(d.minTickets || 0), discountPercent: String(d.discountPercent || 0), fixedPrice: String(d.fixedPrice || 0) })) : [] });
+    setForm({ title: ev.title, type: ev.type || '', date: ev.date || '', time: ev.time || '', location: ev.location || '', locationType: ev.locationType || 'Fixed', price: String(ev.price || ''), maxAttendees: String(ev.maxAttendees || 20), imageUrl: ev.imageUrl || '', status: ev.status || 'Available', description: ev.description || '', forWho: (ev.forWho || ['Couple'])[0], addonIds: ev.addonIds || [], schedule: Array.isArray(ev.schedule) ? ev.schedule : [], comboMinTickets: String(ev.comboMinTickets || 0), comboDiscountPercent: String(ev.comboDiscountPercent || 0), comboDiscounts: Array.isArray(ev.comboDiscounts) ? ev.comboDiscounts.map((d: any) => ({ minTickets: String(d.minTickets || 0), discountPercent: String(d.discountPercent || 0), fixedPrice: String(d.fixedPrice || 0), type: Number(d.fixedPrice) > 0 ? 'fixed' : 'percent' })) : [] });
     setShowForm(true);
   };
 
@@ -445,7 +449,7 @@ function AdminEvents({ token }: { token: string }) {
               <FormField label="Các mức giảm giá Combo">
                 <div className="space-y-2">
                   {form.comboDiscounts.map((item, idx) => {
-                    const isFixed = Number(item.fixedPrice) > 0 || (item.fixedPrice && item.fixedPrice !== '0');
+                    const isFixed = item.type === 'fixed';
                     return (
                       <div key={idx} className="bg-[#f0ede6]/30 p-3 rounded-xl border border-[#f0ede6] space-y-3">
                         <div className="flex justify-between items-center">
@@ -480,8 +484,9 @@ function AdminEvents({ token }: { token: string }) {
                                 className={`${inputCls.replace('w-full', '')} !py-2 !text-sm w-32 shrink-0`}
                                 value={isFixed ? 'fixed' : 'percent'}
                                 onChange={e => {
-                                  const val = e.target.value;
+                                  const val = e.target.value as 'percent' | 'fixed';
                                   const newDiscounts = [...form.comboDiscounts];
+                                  newDiscounts[idx].type = val;
                                   if (val === 'fixed') {
                                     newDiscounts[idx].fixedPrice = newDiscounts[idx].discountPercent || '';
                                     newDiscounts[idx].discountPercent = '0';
@@ -518,7 +523,7 @@ function AdminEvents({ token }: { token: string }) {
                   })}
                   <button 
                     type="button" 
-                    onClick={() => setForm(f => ({ ...f, comboDiscounts: [...f.comboDiscounts, { minTickets: '', discountPercent: '', fixedPrice: '' }] }))}
+                    onClick={() => setForm(f => ({ ...f, comboDiscounts: [...f.comboDiscounts, { minTickets: '', discountPercent: '', fixedPrice: '', type: 'percent' }] }))}
                     className="w-full py-2 rounded-xl border-2 border-dashed border-[#f0ede6] text-sm font-bold text-[#e8539e] hover:bg-[#e8539e]/5 transition-all flex items-center justify-center gap-2"
                   >
                     + Thêm mức giảm giá
