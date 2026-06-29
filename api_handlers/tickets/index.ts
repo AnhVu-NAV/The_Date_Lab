@@ -54,23 +54,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // Apply combo discounts
     const comboDiscounts = Array.isArray(event.comboDiscounts) ? event.comboDiscounts : [];
-    let applicableDiscountPercent = 0;
+    let applicableTier: any = null;
     
     if (comboDiscounts.length > 0) {
       const sortedDescDiscounts = [...comboDiscounts].sort((a: any, b: any) => b.minTickets - a.minTickets);
       for (const tier of sortedDescDiscounts) {
         if (qtyNum >= tier.minTickets) {
-          applicableDiscountPercent = Math.round(tier.discountPercent);
+          applicableTier = tier;
           break;
         }
       }
     } else if ((event.comboMinTickets || 0) > 0 && (event.comboDiscountPercent || 0) > 0) {
       if (qtyNum >= (event.comboMinTickets || 0)) {
-        applicableDiscountPercent = Math.round(event.comboDiscountPercent || 0);
+        applicableTier = { minTickets: event.comboMinTickets, discountPercent: event.comboDiscountPercent, fixedPrice: 0 };
+      }
+    }
+
+    let discountAmount = 0;
+    if (applicableTier) {
+      if (applicableTier.fixedPrice > 0) {
+        const numCombos = Math.floor(qtyNum / applicableTier.minTickets);
+        const remainder = qtyNum % applicableTier.minTickets;
+        const comboTotal = (numCombos * applicableTier.fixedPrice) + (remainder * (event.price || 0));
+        discountAmount = calculatedTotalPrice - comboTotal;
+      } else if (applicableTier.discountPercent > 0) {
+        discountAmount = Math.round(calculatedTotalPrice * (applicableTier.discountPercent / 100));
       }
     }
     
-    const discountAmount = applicableDiscountPercent > 0 ? Math.round(calculatedTotalPrice * (applicableDiscountPercent / 100)) : 0;
     calculatedTotalPrice -= discountAmount;
 
     // Verify addons and add their cost
