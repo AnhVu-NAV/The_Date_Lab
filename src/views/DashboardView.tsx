@@ -335,7 +335,9 @@ function AdminEvents({ token }: { token: string }) {
         .filter(d => Number(d.minTickets) > 0 && (Number(d.discountPercent) > 0 || Number(d.fixedPrice) > 0))
         .map(d => ({ minTickets: Number(d.minTickets), discountPercent: Math.round(Number(d.discountPercent)), fixedPrice: Number(d.fixedPrice) }));
 
-      const data = { ...form, price: Number(form.price), maxAttendees: Number(form.maxAttendees), forWho: [form.forWho], schedule: form.schedule, comboMinTickets: Number(form.comboMinTickets), comboDiscountPercent: Math.round(Number(form.comboDiscountPercent)), comboDiscounts: validComboDiscounts };
+      const validSchedule = form.schedule.filter(s => s.duration.trim() !== '' || s.activity.trim() !== '');
+
+      const data = { ...form, price: Number(form.price), maxAttendees: Number(form.maxAttendees), forWho: [form.forWho], schedule: validSchedule, comboMinTickets: Number(form.comboMinTickets), comboDiscountPercent: Math.round(Number(form.comboDiscountPercent)), comboDiscounts: validComboDiscounts };
       if (editEvent) await api.updateEvent(editEvent.id, data, token);
       else await api.createEvent(data, token);
       setShowForm(false); setEditEvent(null); setForm(emptyForm);
