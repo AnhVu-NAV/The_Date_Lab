@@ -462,7 +462,7 @@ function AdminEvents({ token }: { token: string }) {
                           <div className="w-full sm:w-24 shrink-0">
                             <label className="block text-[10px] font-bold uppercase tracking-widest text-[#243d91]/50 mb-1">Số vé từ</label>
                             <input 
-                              className={`${inputCls} !py-2 !text-sm text-center`} 
+                              className={`${inputCls.replace('w-full', '')} w-full !py-2 !text-sm text-center`} 
                               placeholder="VD: 2" 
                               type="number"
                               value={item.minTickets} 
@@ -473,11 +473,11 @@ function AdminEvents({ token }: { token: string }) {
                               }}
                             />
                           </div>
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <label className="block text-[10px] font-bold uppercase tracking-widest text-[#243d91]/50 mb-1">Hình thức ưu đãi</label>
                             <div className="flex gap-2">
                               <select 
-                                className={`${inputCls} !py-2 !text-sm w-32 shrink-0`}
+                                className={`${inputCls.replace('w-full', '')} !py-2 !text-sm w-32 shrink-0`}
                                 value={isFixed ? 'fixed' : 'percent'}
                                 onChange={e => {
                                   const val = e.target.value;
@@ -496,7 +496,7 @@ function AdminEvents({ token }: { token: string }) {
                                 <option value="fixed">Giá Combo</option>
                               </select>
                               <input 
-                                className={`${inputCls} !py-2 !text-sm flex-1`} 
+                                className={`${inputCls.replace('w-full', '')} !py-2 !text-sm flex-1 min-w-0`} 
                                 placeholder={isFixed ? "VD: 600000" : "VD: 10"} 
                                 type="number"
                                 value={isFixed ? (item.fixedPrice === '0' ? '' : item.fixedPrice) : (item.discountPercent === '0' ? '' : item.discountPercent)}
