@@ -444,50 +444,78 @@ function AdminEvents({ token }: { token: string }) {
               </div>
               <FormField label="Các mức giảm giá Combo">
                 <div className="space-y-2">
-                  {form.comboDiscounts.map((item, idx) => (
-                    <div key={idx} className="flex gap-2 items-center bg-[#f0ede6]/30 p-2 rounded-xl border border-[#f0ede6]">
-                      <input 
-                        className={`${inputCls.replace('w-full', '')} flex-1 !py-1.5 !text-sm`} 
-                        placeholder="Số vé tối thiểu" 
-                        type="number"
-                        value={item.minTickets} 
-                        onChange={e => {
-                          const newDiscounts = [...form.comboDiscounts];
-                          newDiscounts[idx].minTickets = e.target.value;
-                          setForm(f => ({ ...f, comboDiscounts: newDiscounts }));
-                        }}
-                      />
-                      <input 
-                        className={`${inputCls.replace('w-full', '')} flex-1 !py-1.5 !text-sm`} 
-                        placeholder="Giảm giá (%)" 
-                        type="number"
-                        value={item.discountPercent} 
-                        onChange={e => {
-                          const newDiscounts = [...form.comboDiscounts];
-                          newDiscounts[idx].discountPercent = e.target.value;
-                          setForm(f => ({ ...f, comboDiscounts: newDiscounts }));
-                        }}
-                      />
-                      <input 
-                        className={`${inputCls.replace('w-full', '')} flex-1 !py-1.5 !text-sm`} 
-                        placeholder="Giá Combo (VNĐ)" 
-                        type="number"
-                        value={item.fixedPrice} 
-                        onChange={e => {
-                          const newDiscounts = [...form.comboDiscounts];
-                          newDiscounts[idx].fixedPrice = e.target.value;
-                          setForm(f => ({ ...f, comboDiscounts: newDiscounts }));
-                        }}
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => setForm(f => ({ ...f, comboDiscounts: f.comboDiscounts.filter((_, i) => i !== idx) }))}
-                        className="w-8 h-8 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 flex items-center justify-center transition-all shrink-0"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  ))}
+                  {form.comboDiscounts.map((item, idx) => {
+                    const isFixed = Number(item.fixedPrice) > 0 || (item.fixedPrice && item.fixedPrice !== '0');
+                    return (
+                      <div key={idx} className="bg-[#f0ede6]/30 p-3 rounded-xl border border-[#f0ede6] space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-[#243d91]/60 uppercase tracking-widest">Mức ưu đãi {idx + 1}</span>
+                          <button 
+                            type="button" 
+                            onClick={() => setForm(f => ({ ...f, comboDiscounts: f.comboDiscounts.filter((_, i) => i !== idx) }))}
+                            className="w-8 h-8 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 flex items-center justify-center transition-all shrink-0"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <div className="w-full sm:w-24 shrink-0">
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#243d91]/50 mb-1">Số vé từ</label>
+                            <input 
+                              className={`${inputCls} !py-2 !text-sm text-center`} 
+                              placeholder="VD: 2" 
+                              type="number"
+                              value={item.minTickets} 
+                              onChange={e => {
+                                const newDiscounts = [...form.comboDiscounts];
+                                newDiscounts[idx].minTickets = e.target.value;
+                                setForm(f => ({ ...f, comboDiscounts: newDiscounts }));
+                              }}
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#243d91]/50 mb-1">Hình thức ưu đãi</label>
+                            <div className="flex gap-2">
+                              <select 
+                                className={`${inputCls} !py-2 !text-sm w-32 shrink-0`}
+                                value={isFixed ? 'fixed' : 'percent'}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  const newDiscounts = [...form.comboDiscounts];
+                                  if (val === 'fixed') {
+                                    newDiscounts[idx].fixedPrice = newDiscounts[idx].discountPercent || '';
+                                    newDiscounts[idx].discountPercent = '0';
+                                  } else {
+                                    newDiscounts[idx].discountPercent = newDiscounts[idx].fixedPrice || '';
+                                    newDiscounts[idx].fixedPrice = '0';
+                                  }
+                                  setForm(f => ({ ...f, comboDiscounts: newDiscounts }));
+                                }}
+                              >
+                                <option value="percent">% Giảm</option>
+                                <option value="fixed">Giá Combo</option>
+                              </select>
+                              <input 
+                                className={`${inputCls} !py-2 !text-sm flex-1`} 
+                                placeholder={isFixed ? "VD: 600000" : "VD: 10"} 
+                                type="number"
+                                value={isFixed ? (item.fixedPrice === '0' ? '' : item.fixedPrice) : (item.discountPercent === '0' ? '' : item.discountPercent)}
+                                onChange={e => {
+                                  const newDiscounts = [...form.comboDiscounts];
+                                  if (isFixed) {
+                                    newDiscounts[idx].fixedPrice = e.target.value;
+                                  } else {
+                                    newDiscounts[idx].discountPercent = e.target.value;
+                                  }
+                                  setForm(f => ({ ...f, comboDiscounts: newDiscounts }));
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                   <button 
                     type="button" 
                     onClick={() => setForm(f => ({ ...f, comboDiscounts: [...f.comboDiscounts, { minTickets: '', discountPercent: '', fixedPrice: '' }] }))}
