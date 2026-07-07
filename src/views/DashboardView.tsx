@@ -1660,6 +1660,7 @@ function AdminSettings({ token }: { token: string }) {
   const { lng } = useLanguage();
   const [settings, setSettings] = useState<any>({});
   const [features, setFeatures] = useState<any>({ chatbot: true, quiz: true, vault: true, tarot: true });
+  const [contractText, setContractText] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -1672,6 +1673,9 @@ function AdminSettings({ token }: { token: string }) {
         vault: data.features?.vault !== false,
         tarot: data.features?.tarot !== false,
       });
+      if (data.image_rights_contract) {
+        setContractText(data.image_rights_contract);
+      }
     }).catch(console.error);
   }, []);
 
@@ -1679,7 +1683,7 @@ function AdminSettings({ token }: { token: string }) {
     setLoading(true);
     setMessage('');
     try {
-      await api.updateSettings({ contact_info: settings, features }, token);
+      await api.updateSettings({ contact_info: settings, features, image_rights_contract: contractText }, token);
       setMessage(lng === 'vi' ? 'Đã lưu cài đặt' : 'Settings saved');
     } catch (e: any) {
       setMessage(e.message || 'Lỗi lưu cài đặt');
@@ -1735,6 +1739,18 @@ function AdminSettings({ token }: { token: string }) {
             </label>
           ))}
         </div>
+
+        <h3 className="font-display font-bold text-xl text-[#243d91] mb-2 mt-8">Hợp đồng sử dụng hình ảnh cá nhân</h3>
+        <p className="text-sm text-[#243d91]/60 mb-4">
+          Bạn có thể sử dụng các biến sau để hệ thống tự điền: <br />
+          <code className="bg-[#f0ede6] px-1 py-0.5 rounded">{'{{name}}'}</code>, <code className="bg-[#f0ede6] px-1 py-0.5 rounded">{'{{phone}}'}</code>, <code className="bg-[#f0ede6] px-1 py-0.5 rounded">{'{{dob}}'}</code>, <code className="bg-[#f0ede6] px-1 py-0.5 rounded">{'{{address}}'}</code>, <code className="bg-[#f0ede6] px-1 py-0.5 rounded">{'{{date}}'}</code>, <code className="bg-[#f0ede6] px-1 py-0.5 rounded">{'{{event_name}}'}</code>
+        </p>
+        <textarea 
+          value={contractText}
+          onChange={e => setContractText(e.target.value)}
+          placeholder="Nhập nội dung hợp đồng ở đây..."
+          className={`${inputCls} resize-none h-64`}
+        />
 
         <div className="mt-8 flex items-center gap-4">
           <button

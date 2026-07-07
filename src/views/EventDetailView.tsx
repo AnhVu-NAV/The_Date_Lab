@@ -25,16 +25,91 @@ export default function EventDetailView() {
   const [copied, setCopied] = useState(false);
   const [dbAddons, setDbAddons] = useState<any[]>([]);
   const [selectedAddons, setSelectedAddons] = useState<Set<string>>(new Set());
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+
+  const defaultContractText = `CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM
+Độc lập – Tự do – Hạnh Phúc
+...., Ngày {{date}}
+
+HỢP ĐỒNG ĐỘC QUYỀN SỬ DỤNG HÌNH ẢNH CÁ NHÂN
+
+Căn cứ: Bộ luật Dân sự 2015
+Căn cứ: Luật Sở hữu trí tuệ
+Căn cứ: Nhu cầu và khả năng của các bên
+
+Hôm nay, ngày {{date}}, chúng tôi bao gồm:
+
+Bên A: Bên sở hữu hình ảnh (Khách hàng tham gia sự kiện)
+- Họ và tên: {{name}}
+- Số điện thoại: {{phone}}
+- Địa chỉ: {{address}}
+- Ngày sinh: {{dob}}
+
+Bên B: Bên sử dụng hình ảnh độc quyền (Ban tổ chức - The Date Lab)
+- Đại diện bởi Ban tổ chức sự kiện
+
+Cùng bàn bạc thống nhất những thoả thuận sau đây:
+
+Điều 1. Đối tượng hợp đồng
+Các bên xác định đối tượng hợp đồng như sau: Bên B quản lý độc quyền hình ảnh Bên A, mục đích thực hiện công việc với những nội dung mô tả như sau:
+- Quảng cáo, quảng bá hình ảnh của Bên A cùng với sản phẩm, dịch vụ của Bên B.
+- Đăng thông tin sản phẩm, dịch vụ cùng hình ảnh của Bên A trên các Webstie, báo đài,..
+
+Điều 2. Phạm vi và mục đích sử dụng hình ảnh
+- Bên A đồng ý cho phép bên B toàn quyền sử dụng hình ảnh cá nhân của mình để đăng lên các website của dự án, màn hình lớn, in trên các tờ rơi, in trên vé bán, … Không một bên thứ ba nào khác có thể sử dụng hình ảnh của Bên A trong suốt thời gian thực hiện hợp đồng với Bên B.
+- Bên B chỉ được sử dụng hình ảnh của bên A cho các sản phẩm, sự kiện thuộc thương hiệu của The Date Lab như đã thoả thuận. Trường hợp bên B sử dụng hình ảnh của bên A nhằm quảng cáo cho các sản phẩm khác không thuộc các sản phẩm đã nêu trên là vi phạm hợp đồng, Bên A có quyền đơn phương chấm dứt hợp đồng với bên B.
+- Thời gian sử dụng hình ảnh: Vô thời hạn kể từ ngày Hợp đồng này có hiệu lực.
+- Mục đích sử dụng hình ảnh: Bên B sử dụng hình ảnh của Bên A nhằm mục đích quảng cáo sản phẩm, dịch vụ của Bên B trên báo đài, website, tờ rơi, vé bán, mạng xã hội…
+
+Điều 3. Quyền sở hữu về tác phẩm hình ảnh, bản ghi âm, ghi hình
+- Các sản phẩm của bên B như hình ảnh, bản ghi âm, ghi hình,….được bên B đầu tư, sáng tác, tạo ra có chứa hình ảnh cá nhân của bên A sẽ thuộc quyền sở hữu của bên B. Bên B được toàn quyền sử dụng, sao chép trực tiếp hoặc gián tiếp, phân phối đến công chúng bằng hình thức bán, cho thuê, hoặc phân phối bằng bất kỳ phương tiện kĩ thuật nào mà công chúng có thể tiếp cận được.
+- Bên A phải được giới thiệu trong các tác phẩm: Hình ảnh, bản ghi âm, ghi hình của bên B. Bên B phải bảo vệ toàn vẹn hình ảnh của bên A, không được cắt xén hoặc xuyên tạc dưới bất kì hình thức nào gây phương hại đến danh dự và uy tín của bên A.
+
+Điều 4. Thù lao và phương thức thanh toán
+Hợp đồng này được xem là một phần của điều khoản tham gia sự kiện. Việc Bên A đồng ý tham gia sự kiện đồng nghĩa với việc cho phép Bên B sử dụng hình ảnh mà không yêu cầu thù lao (trừ khi có thoả thuận khác bằng văn bản).
+
+Điều 5. Quyền và nghĩa vụ của các bên
+5.1 Quyền và nghĩa vụ của Bên A:
+- Bên A có quyền yêu cầu Bên B tháo gỡ hình ảnh của mình, nếu phát hiện Bên B sử dụng không đúng phạm vi, mục đích sử dụng. Đồng thời yêu cầu Bên B bồi thường thiệt hại, nếu Bên B sử dụng hình ảnh của Bên A vào mục đích xấu, gây ảnh hưởng đến hình cảnh của Bên A.
+- Cung cấp độc quyền hình ảnh cho Bên B đúng thời hạn, và đầy đủ (thông qua việc tham gia sự kiện).
+
+5.2 Quyền và nghĩa vụ của Bên B:
+- Được toàn quyền sử dụng hình ảnh của Bên A đăng lên các Website quảng cáo, trên báo đài, in hình ảnh của Bên A trên các tờ rơi, vé bán, mạng xã hội… nhằm mục đích quảng cáo sản phẩm, dịch vụ của công ty.
+- Được quyền chỉnh sửa hình ảnh của Bên A, nếu được Bên A đồng ý.
+- Sử dụng hình ảnh của Bên A đúng phạm vi và mục đích sử dụng.
+- Không được tự ý chỉnh sửa hình ảnh của Bên A khi Bên A chưa cho phép hay đồng ý làm sai lệch bản chất hình ảnh.
+
+Điều 6. Phạt vi phạm & Điều 7. Bồi thường thiệt hại
+Theo quy định của pháp luật hiện hành và các quy định chung của ban tổ chức.
+
+Điều 8. Giải quyết tranh chấp
+- Trường hợp các bên có tranh chấp hoặc liên quan đến hợp đồng này thì hai bên cùng nhau bàn bạc giải quyết thông qua thương lượng, hoà giải để đảm bảo quyền lợi của cả hai bên.
+- Trường hợp không thương lượng, hoà giải được thì một hoặc cả hai bên được khởi kiện tại Toà án có thẩm quyền.
+
+Điều 9. Chấm dứt hợp đồng
+- Khi có yêu cầu bằng văn bản và được sự đồng ý của cả hai bên.
+- Theo quy định của pháp luật.
+
+Điều 10. Hiệu lực hợp đồng
+- Hợp đồng này có hiệu lực kể từ khi Khách hàng (Bên A) tích chọn "Tôi đồng ý" và hoàn tất việc mua vé.
+- Hai bên cam kết thực hiện đúng các điều khoản của hợp đồng.`;
+
+  const [contractText, setContractText] = useState(defaultContractText);
 
   useEffect(() => {
     if (!id) return;
     Promise.all([
       api.getEvent(id),
-      api.getAddons().catch(() => []) // Fetch addons, ignore error if fails
+      api.getAddons().catch(() => []), // Fetch addons, ignore error if fails
+      api.getSettings().catch(() => ({}))
     ])
-      .then(([evt, addonsList]) => {
+      .then(([evt, addonsList, sysSettings]) => {
         setEvent(evt);
         setDbAddons(addonsList.filter((a: any) => a.isActive && (evt.addonIds || []).includes(a.id)));
+        if (sysSettings.image_rights_contract) {
+          setContractText(sysSettings.image_rights_contract);
+        }
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
@@ -146,6 +221,14 @@ export default function EventDetailView() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const processedContractText = contractText
+    .replace(/{{name}}/g, user?.name || '...........................................')
+    .replace(/{{phone}}/g, user?.phone || '.........................')
+    .replace(/{{dob}}/g, user?.dob || '.........................')
+    .replace(/{{address}}/g, user?.address || '...........................................')
+    .replace(/{{date}}/g, new Date().toLocaleDateString('vi-VN'))
+    .replace(/{{event_name}}/g, event.title || '.........................');
+
   return (
     <div className="max-w-5xl mx-auto">
       <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm font-bold text-[#243d91]/60 hover:text-[#243d91] mb-6 group">
@@ -235,6 +318,64 @@ export default function EventDetailView() {
                 <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-1">{lng === 'vi' ? 'Giá vé' : 'Ticket price'}</p>
                 <p className="font-display font-bold text-3xl">{fmt(event.price)}<span className="text-lg font-sans font-normal text-white/60">/{lng === 'vi' ? 'người' : 'person'}</span></p>
               </div>
+
+              {/* TERMS MODAL */}
+              <AnimatePresence>
+                {showTermsModal && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+                    onClick={() => setShowTermsModal(false)}
+                  >
+                    <motion.div
+                      initial={{ scale: 0.9, y: 20 }}
+                      animate={{ scale: 1, y: 0 }}
+                      className="bg-white rounded-3xl p-6 max-w-2xl w-full shadow-2xl max-h-[85vh] flex flex-col"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex items-center justify-between mb-4 shrink-0">
+                        <h3 className="font-display font-bold text-[#243d91] text-lg">
+                          {lng === 'vi' ? 'Hợp đồng sử dụng hình ảnh cá nhân' : 'Personal Image Use Contract'}
+                        </h3>
+                        <button onClick={() => setShowTermsModal(false)} className="w-8 h-8 rounded-full bg-[#f0ede6] flex items-center justify-center text-[#243d91]/60 hover:text-red-500 transition-all">
+                          <X size={14} />
+                        </button>
+                      </div>
+                      
+                      <div className="overflow-y-auto flex-1 pr-2 space-y-3 text-sm text-[#243d91]/80 custom-scrollbar">
+                        {processedContractText.split('\n').map((line, idx) => {
+                          if (line.trim() === '') return <div key={idx} className="h-1" />;
+                          const isHeader = line.includes('CỘNG HOÀ') || line.includes('Độc lập') || line.includes('HỢP ĐỒNG') || line.includes('Ngày') && line.includes('....');
+                          const isBold = line.includes('Điều ') || line.includes('Bên A') || line.includes('Bên B') || line.includes('Hôm nay, ngày') || line.includes('Căn cứ:') || isHeader;
+                          
+                          return (
+                            <p 
+                              key={idx} 
+                              className={`${isHeader ? 'text-center' : ''} ${isBold ? 'font-bold' : ''} ${line.includes('HỢP ĐỒNG ĐỘC QUYỀN') ? 'text-lg mt-4 mb-2' : ''}`}
+                            >
+                              {line}
+                            </p>
+                          );
+                        })}
+                      </div>
+                      
+                      <div className="mt-4 pt-4 border-t border-[#f0ede6] shrink-0">
+                        <button 
+                          onClick={() => {
+                            setAgreedToTerms(true);
+                            setShowTermsModal(false);
+                          }}
+                          className="w-full py-3 bg-[#e8539e] text-white font-bold rounded-xl hover:bg-[#e8539e]/90 transition-all"
+                        >
+                          {lng === 'vi' ? 'Tôi đã đọc và đồng ý' : 'I have read and agree'}
+                        </button>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* QR PAYMENT MODAL */}
               <AnimatePresence>
@@ -395,14 +536,38 @@ export default function EventDetailView() {
                     </div>
                   </div>
 
+                  <div className="mt-4 flex items-start gap-2 bg-[#f0ede6]/30 p-3 rounded-xl border border-[#f0ede6]">
+                    <input 
+                      type="checkbox" 
+                      id="terms" 
+                      checked={agreedToTerms} 
+                      onChange={(e) => setAgreedToTerms(e.target.checked)}
+                      className="mt-1 accent-[#e8539e] w-4 h-4 shrink-0 cursor-pointer"
+                    />
+                    <label htmlFor="terms" className="text-sm text-[#243d91]/80 cursor-pointer select-none">
+                      {lng === 'vi' ? 'Tôi đã đọc và đồng ý với ' : 'I have read and agree to the '}
+                      <button 
+                        type="button" 
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowTermsModal(true); }}
+                        className="text-[#e8539e] font-bold underline hover:text-[#243d91] transition-colors"
+                      >
+                        {lng === 'vi' ? 'Hợp đồng sử dụng hình ảnh cá nhân' : 'Personal Image Use Contract'}
+                      </button>
+                    </label>
+                  </div>
+
                   {!user ? (
-                    <button onClick={() => navigate('/login')} className="w-full py-3.5 bg-[#243d91] text-white font-bold rounded-xl hover:bg-[#243d91]/90 transition-all flex items-center justify-center gap-2">
+                    <button 
+                      onClick={() => navigate('/login')} 
+                      disabled={!agreedToTerms}
+                      className="w-full py-3.5 bg-[#243d91] text-white font-bold rounded-xl hover:bg-[#243d91]/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                    >
                       <Lock size={16} /> {lng === 'vi' ? 'Đăng nhập để đặt vé' : 'Log in to book'}
                     </button>
                   ) : (
                     <button
                       onClick={handleBook}
-                      disabled={event.status === 'Sold Out' || bookingLoading}
+                      disabled={event.status === 'Sold Out' || bookingLoading || !agreedToTerms}
                       className="w-full py-3.5 bg-[#e8539e] text-white font-bold rounded-xl hover:bg-[#e8539e]/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-[#e8539e]/30 flex items-center justify-center gap-2"
                     >
                       {bookingLoading ? (
