@@ -9,6 +9,9 @@ function authHeaders(token?: string | null): HeadersInit {
 async function handleResponse<T>(r: Response): Promise<T> {
   if (!r.ok) {
     const err = await r.json().catch(() => ({ error: r.statusText }));
+    if (r.status === 401 || err.error === 'Invalid token' || err.error === 'Unauthorized') {
+      window.dispatchEvent(new CustomEvent('auth:expired'));
+    }
     throw new Error(err.error || 'Request failed');
   }
   return r.json();
