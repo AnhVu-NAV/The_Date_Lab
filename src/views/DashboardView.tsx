@@ -1541,7 +1541,11 @@ function AdminVault({ token }: { token: string }) {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const emptyForm = { imageUrl: '', eventId: '', eventTitle: '', caption: '' };
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<{current: number, total: number} | null>(null);
+
+  const emptyForm = { eventId: '', eventTitle: '', caption: '' };
   const [form, setForm] = useState(emptyForm);
 
   const refresh = () => api.getAdminVault(token).then(setMemories);
@@ -1550,29 +1554,56 @@ function AdminVault({ token }: { token: string }) {
     api.getEvents().then(setEvents).catch(console.error);
   }, [token]);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const res = await api.uploadImage(reader.result as string, 'vault', token);
-        setForm(f => ({ ...f, imageUrl: res.url }));
-        toast.success('Upload thành công!');
-      } catch { toast.error('Upload failed'); }
-      finally { setUploading(false); }
-    };
-    reader.readAsDataURL(file);
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setUploadFiles(files);
+    
+    const urls: string[] = [];
+    let loaded = 0;
+    
+    files.forEach((file, index) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        urls[index] = reader.result as string;
+        loaded++;
+        if (loaded === files.length) {
+          setPreviewUrls([...urls]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleSave = async () => {
+    if (uploadFiles.length === 0 || !token) return;
+    setUploading(true);
+    setUploadProgress({ current: 0, total: uploadFiles.length });
     try {
-      await api.createAdminVaultMemory(form, token);
-      setShowForm(false); setForm(emptyForm);
+      for (let i = 0; i < uploadFiles.length; i++) {
+        setUploadProgress({ current: i + 1, total: uploadFiles.length });
+        const uploaded = await api.uploadImage(previewUrls[i], 'vault', token);
+        await api.createAdminVaultMemory({
+          imageUrl: uploaded.url,
+          cloudinaryPublicId: uploaded.publicId,
+          eventId: form.eventId || null,
+          eventTitle: form.eventTitle,
+          caption: form.caption
+        }, token);
+      }
+      setShowForm(false); 
+      setForm(emptyForm);
+      setUploadFiles([]);
+      setPreviewUrls([]);
+      setUploadProgress(null);
       toast.success('Thêm ảnh thành công!');
       refresh();
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err: any) { 
+      toast.error(err.message || 'Lỗi tải ảnh');
+      setUploadProgress(null);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -1637,15 +1668,46 @@ function AdminVault({ token }: { token: string }) {
                 <textarea className={`${inputCls} resize-none`} rows={2} value={form.caption} onChange={e => setForm(f => ({ ...f, caption: e.target.value }))} />
               </FormField>
               <FormField label="Ảnh">
-                {form.imageUrl && <img src={form.imageUrl} alt="" className="w-full h-32 object-cover rounded-xl mb-2" />}
+                {previewUrls.length > 0 && (
+                  <div className={`grid gap-2 overflow-y-auto max-h-60 rounded-xl mb-2 ${previewUrls.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                    {previewUrls.map((url, i) => {
+                      const status = !uploading ? 'idle' : (!uploadProgress ? 'idle' : (i + 1 < uploadProgress.current ? 'done' : (i + 1 === uploadProgress.current ? 'uploading' : 'pending')));
+                      return (
+                        <div key={i} className="relative aspect-video bg-gray-100 rounded-xl overflow-hidden">
+                          <img src={url} alt="" className={`w-full h-full object-cover transition-all ${status === 'pending' || status === 'done' ? 'opacity-50' : ''}`} />
+                          {status === 'done' && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-emerald-500/20 backdrop-blur-sm">
+                              <CheckCircle2 size={32} className="text-emerald-500 bg-white rounded-full" />
+                            </div>
+                          )}
+                          {status === 'uploading' && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm">
+                              <div className="w-8 h-8 border-4 border-[#243d91] border-t-transparent rounded-full animate-spin" />
+                            </div>
+                          )}
+                          {previewUrls.length > 1 && (
+                            <div className="absolute top-1 right-1 bg-black/50 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10">{i + 1}/{previewUrls.length}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
                 <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="w-full py-2.5 rounded-xl border-2 border-dashed border-[#f0ede6] text-sm font-bold text-[#243d91]/60 hover:border-[#e8539e]/30 transition-all flex items-center justify-center gap-2">
-                  {uploading ? <div className="w-4 h-4 border-2 border-[#e8539e] border-t-transparent rounded-full animate-spin" /> : <Upload size={14} />}
-                  {uploading ? 'Uploading...' : 'Upload ảnh'}
+                  <Upload size={14} />
+                  Chọn ảnh {previewUrls.length > 0 ? `(${previewUrls.length})` : ''}
                 </button>
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
               </FormField>
-              <button onClick={handleSave} className="w-full py-3 bg-[#243d91] text-white font-bold rounded-xl hover:bg-[#243d91]/90 transition-all">
-                Đăng ảnh
+              <button 
+                onClick={handleSave} 
+                disabled={uploading || uploadFiles.length === 0} 
+                className="w-full py-3 bg-[#243d91] text-white font-bold rounded-xl hover:bg-[#243d91]/90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+              >
+                {uploading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                {uploading 
+                  ? (uploadProgress ? `Đang tải ${uploadProgress.current}/${uploadProgress.total}...` : 'Đang tải...') 
+                  : `Đăng ${uploadFiles.length > 1 ? uploadFiles.length + ' ảnh' : 'ảnh'}`}
               </button>
             </div>
           </Modal>
